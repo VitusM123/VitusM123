@@ -155,7 +155,8 @@ class AppState {
     const ok = params.get('google');
     const err = params.get('google_error');
     if (!ok && !err) return;
-    this.notify(ok ? 'Google-Konto verbunden – Kalender werden geladen …' : `Google-Anmeldung fehlgeschlagen: ${err}`);
+    this.notify(ok ? 'Google verbunden – neue Termine landen künftig in Google (änderbar unter „Kalender“)'
+      : `Google-Anmeldung fehlgeschlagen: ${err}`);
     params.delete('google');
     params.delete('google_error');
     const query = params.toString();

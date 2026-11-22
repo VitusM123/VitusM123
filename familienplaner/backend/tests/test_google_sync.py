@@ -84,6 +84,10 @@ def test_connect_and_initial_import(gclient, fake):
     assert account["display_name"] == PRIMARY and account["provider"] == "google"
     cals = {c["name"]: c for c in gclient.get("/api/calendars").json()}
     assert cals["Feiertage"]["read_only"] and not cals["Familie (Google)"]["read_only"]
+    # Hauptkalender des neuen Kontos ist jetzt Standard für neue Termine
+    assert cals["Familie (Google)"]["is_default"] and not cals["Familie"]["is_default"]
+    ev = gclient.post("/api/events", json={"title": "Neu", "start": "2026-11-30T10:00:00"}).json()
+    assert ev["calendar_id"] == cals["Familie (Google)"]["id"]
 
     evs = events(gclient)
     turnen = [(e["title"], e["start"]) for e in evs if e["title"].startswith("Turnen")]
@@ -254,5 +258,8 @@ def test_google_config_in_settings(client):
 def test_disconnect_keeps_remote(gclient, fake):
     account = connect(gclient, fake)
     assert gclient.delete(f"/api/accounts/{account['id']}").status_code == 204
-    assert [c["provider"] for c in gclient.get("/api/calendars").json()] == ["local"]
+    cals = gclient.get("/api/calendars").json()
+    assert [c["provider"] for c in cals] == ["local"]
+    assert cals[0]["is_default"]                  # Standard fällt auf den lokalen Kalender zurück
+    assert gclient.post("/api/events", json={"title": "X", "start": "2026-11-30T10:00:00"}).status_code == 201
     assert "e1" in fake.events[PRIMARY]

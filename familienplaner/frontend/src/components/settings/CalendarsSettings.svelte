@@ -94,7 +94,10 @@
     {/if}
   </li>
 </ul>
-<p class="note">Google- und iCloud-Kalender erscheinen hier nach dem Verbinden eines Kontos. Schreibgeschützte Kalender
+<p class="note">Neue Termine landen im Kalender mit der Markierung „Standard“. Nach dem Verbinden eines
+  Google- oder iCloud-Kontos wird dessen Hauptkalender automatisch Standard, damit neue Termine auf allen Geräten
+  erscheinen. Termine im lokalen Kalender „Familie“ bleiben nur auf dem Familienplaner.
+  Google- und iCloud-Kalender erscheinen hier nach dem Verbinden eines Kontos. Schreibgeschützte Kalender
   (z. B. Feiertage) werden angezeigt, können aber nicht bearbeitet werden.</p>
 
 <style>

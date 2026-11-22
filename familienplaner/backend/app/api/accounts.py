@@ -13,6 +13,7 @@ from app.domain.models import Account, Calendar, Event, EventMember, ProviderTyp
 from app.providers.calendar.base import ProviderError
 from app.schemas import AccountOut
 from app.services import google_service, icloud_service
+from app.services.calendar_service import ensure_default_calendar
 from app.services.errors import ForbiddenError, NotFoundError, ValidationError
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
@@ -171,6 +172,8 @@ async def delete_account(account_id: int, request: Request, session: Session = D
             session.delete(cal)
         session.flush()   # Kalender vor dem Konto löschen (Fremdschlüssel)
     session.delete(account)
+    session.flush()
+    ensure_default_calendar(session)
     session.commit()
     await request.app.state.bus.publish("calendars.changed", {})
     await request.app.state.bus.publish("events.changed", {"reason": "account_removed"})

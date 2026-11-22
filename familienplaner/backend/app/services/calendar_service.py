@@ -33,6 +33,22 @@ MAX_WINDOW_DAYS = 400
 MAX_FAMILY_TABLE_DAYS = 62
 
 
+def ensure_default_calendar(session: Session) -> None:
+    """Sorgt dafür, dass genau ein beschreibbarer Kalender Standard ist (z. B. nachdem der bisherige
+    Standardkalender mit seinem Konto entfernt wurde). Lokale Kalender werden bevorzugt."""
+    if session.exec(select(Calendar).where(Calendar.is_default == True)).first():  # noqa: E712
+        return
+    candidates = session.exec(
+        select(Calendar, Account.provider).join(Account).where(Calendar.read_only == False)  # noqa: E712
+        .order_by(Calendar.id)
+    ).all()
+    if not candidates:
+        return
+    cal = next((c for c, p in candidates if p == ProviderType.LOCAL), candidates[0][0])
+    cal.is_default = True
+    session.add(cal)
+
+
 class CalendarService:
     def __init__(self, session: Session, settings: Settings) -> None:
         self.session = session

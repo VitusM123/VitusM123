@@ -47,6 +47,10 @@ ggf. mit der Admin-PIN entsperren:
 
 ## Wie synchronisiert wird
 
+- **Neue Termine:** Nach dem Verbinden wird der Hauptkalender des Google-Kontos automatisch **Standard**.
+  Neu angelegte Termine (auch aus der Aktivitätensuche) erscheinen dadurch auf allen Geräten. Das gilt nur,
+  solange vorher ein lokaler Kalender Standard war. Ändern lässt sich das unter **Einstellungen → Kalender → Als Standard**.
+  Im Termin-Dialog kannst du den Kalender außerdem pro Termin wählen.
 - Alle 5 Minuten (`sync.interval_minutes`) sowie 2 Sekunden nach jeder Änderung am Familienplaner.
 - Änderungen gehen in beide Richtungen. Wurde ein Termin auf beiden Seiten geändert, gewinnt die jüngere Änderung.
 - Die Zuordnung zu Familienmitgliedern wird unsichtbar im Google-Termin gespeichert (`extendedProperties`).

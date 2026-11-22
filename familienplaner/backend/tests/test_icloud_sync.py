@@ -69,6 +69,7 @@ def test_connect_and_import(iclient, fake):
     cals = {c["name"]: c for c in iclient.get("/api/calendars").json() if c["provider"] == "icloud"}
     assert set(cals) == {"Zuhause", "Arbeit (geteilt)"}          # Erinnerungen (VTODO) ausgelassen
     assert cals["Arbeit (geteilt)"]["read_only"] and cals["Zuhause"]["color"] == "#FF2968"
+    assert cals["Zuhause"]["is_default"]          # neue Termine landen in iCloud
 
     evs = events(iclient)
     chor = [(e["title"], e["start"]) for e in evs if e["title"].startswith("Chor")]
@@ -189,3 +190,14 @@ def test_read_only_calendar_not_pushed(iclient, fake):
     assert iclient.post("/api/events", json={"title": "X", "start": "2026-11-26T10:00:00",
                                              "calendar_id": work}).status_code == 403
     assert not any(m == "PUT" for m, _ in fake.requests)
+
+
+def test_explicit_default_is_kept(iclient, fake):
+    """Ist schon ein Kalender eines anderen Kontos Standard, bleibt er es; erneutes Verbinden ändert nichts."""
+    connect(iclient)
+    local = next(c for c in iclient.get("/api/calendars").json() if c["provider"] == "local")
+    iclient.put(f"/api/calendars/{local['id']}", json={"is_default": True})      # bewusst zurück auf lokal
+    iclient.post("/api/accounts/icloud", json={"apple_id": "anna@icloud.com", "app_password": "abcd-efgh-ijkl-mnop"})
+    iclient.post("/api/sync")
+    defaults = [c["name"] for c in iclient.get("/api/calendars").json() if c["is_default"]]
+    assert defaults == [local["name"]]

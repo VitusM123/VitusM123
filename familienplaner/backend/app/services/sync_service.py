@@ -36,8 +36,11 @@ from app.providers.calendar.base import (
     RemoteNotFound,
     SyncTokenExpired,
 )
+from app.services.calendar_service import ensure_default_calendar
 
 log = logging.getLogger(__name__)
+# Typische Namen des Hauptkalenders bei iCloud/CalDAV (dort gibt es kein „primary“-Kennzeichen)
+PREFERRED_DEFAULT_NAMES = {"kalender", "calendar", "zuhause", "home", "privat", "persönlich", "personal", "familie"}
 ProviderFactory = Callable[[Session, Account, httpx.AsyncClient], CalendarProvider | None]
 
 
@@ -185,12 +188,39 @@ class SyncService:
             session.add(cal)
         for gone in local.values():           # remote entfernt → lokal entfernen
             self._delete_calendar(session, gone)
+        session.flush()
+        ensure_default_calendar(session)
+        if account.last_sync is None:         # erster Abgleich eines neu verbundenen Kontos
+            self._adopt_default_calendar(session, account, remote_cals)
         session.commit()
 
         stats = SyncStats()
         for cal in session.exec(select(Calendar).where(Calendar.account_id == account.id)).all():
             stats.add(await self._sync_calendar(session, cal, provider))
         return stats
+
+    def _adopt_default_calendar(self, session: Session, account: Account, remote_cals: list) -> None:
+        """Hauptkalender des neuen Kontos wird Standard für neue Termine – aber nur, wenn bisher ein
+        lokaler Kalender Standard ist (eine bewusste Wahl eines anderen Kontos bleibt erhalten)."""
+        current = session.exec(select(Calendar).where(Calendar.is_default == True)).first()  # noqa: E712
+        if current is not None and session.get(Account, current.account_id).provider != ProviderType.LOCAL:
+            return
+        writable = [c for c in remote_cals if not c.read_only]
+        if not writable:
+            return
+        pick = (next((c for c in writable if c.primary), None)
+                or next((c for c in writable if c.name.strip().lower() in PREFERRED_DEFAULT_NAMES), None)
+                or writable[0])
+        cal = session.exec(select(Calendar).where(Calendar.account_id == account.id,
+                                                  Calendar.remote_id == pick.remote_id)).first()
+        if cal is None:
+            return
+        if current is not None:
+            current.is_default = False
+            session.add(current)
+        cal.is_default = True
+        session.add(cal)
+        log.info("Kalender „%s“ ist jetzt Standard für neue Termine", cal.name)
 
     def _delete_calendar(self, session: Session, cal: Calendar) -> None:
         events = session.exec(select(Event).where(Event.calendar_id == cal.id)).all()

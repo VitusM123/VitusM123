@@ -67,7 +67,7 @@
       await api.googleComplete(pasted.trim());
       pasted = '';
       pasteMode = false;
-      app.notify('Google-Konto verbunden – Kalender werden geladen …');
+      app.notify('Google verbunden – neue Termine landen künftig in Google (änderbar unter „Kalender“)');
       await load();
     });
   };
@@ -87,7 +87,7 @@
       await api.icloudConnect(appleId, appPassword, advanced ? serverUrl : null);
       icloudForm = false;
       appPassword = '';
-      app.notify('iCloud verbunden – Kalender werden geladen …');
+      app.notify('iCloud verbunden – neue Termine landen künftig in iCloud (änderbar unter „Kalender“)');
       await load();
       app.calendars = await api.calendars();
     } catch (err) {

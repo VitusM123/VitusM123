@@ -21,6 +21,10 @@ Erinnerungslisten werden nicht übernommen. Mit dir geteilte Kalender ohne Schre
 
 ## Wie synchronisiert wird
 
+- **Neue Termine:** Nach dem Verbinden wird der Hauptkalender des iCloud-Kontos automatisch **Standard**.
+  Neu angelegte Termine (auch aus der Aktivitätensuche) erscheinen dadurch auf allen Geräten. Das gilt nur,
+  solange vorher ein lokaler Kalender Standard war. Ändern lässt sich das unter **Einstellungen → Kalender → Als Standard**.
+  Im Termin-Dialog kannst du den Kalender außerdem pro Termin wählen.
 - Alle 5 Minuten sowie 2 Sekunden nach jeder Änderung am Familienplaner, in beide Richtungen.
 - Wurde ein Termin auf beiden Seiten geändert, gewinnt die jüngere Änderung.
 - Serien und ihre geänderten Einzeltermine werden wie in Apple Kalender gemeinsam gespeichert.
