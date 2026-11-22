@@ -80,11 +80,17 @@ def test_recurring_series_single_occurrence_edit_and_delete(client, members):
     # Gleiches Vorkommen erneut ändern -> dieselbe Einzeländerung
     r = client.put(f"/api/events/{ev['id']}", params={"occurrence_start": tuesday}, json={"location": "Hallenbad"})
     assert r.json()["id"] == override_id
+    assert r.json()["series_id"] == ev["id"]
 
     # Mittwoch absagen
     r = client.delete(f"/api/events/{ev['id']}", params={"occurrence_start": occ[2]["start"]})
     assert r.status_code == 204
     assert len(_week(client)) == 4
+
+    # Einzeländerung direkt löschen -> Vorkommen bleibt abgesagt (kein Wiederauftauchen)
+    assert client.delete(f"/api/events/{override_id}").status_code == 204
+    occ = _week(client)
+    assert len(occ) == 3 and all(o["title"] == "Schwimmen" for o in occ)
 
     # Ungültiges Vorkommen
     r = client.delete(f"/api/events/{ev['id']}", params={"occurrence_start": "2026-11-24T09:00:00Z"})

@@ -37,6 +37,8 @@ export interface EventOccurrence {
   timezone: string;
   rrule: string | null;
   recurring: boolean;
+  /** id der Serie (bei Serien = eigene id, bei Einzeländerungen = Master), sonst null */
+  series_id: number | null;
   member_ids: number[];
   color: string | null;
   category: string | null;

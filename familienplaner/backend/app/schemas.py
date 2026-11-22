@@ -151,6 +151,8 @@ class EventOccurrence(BaseModel):
     timezone: str
     rrule: str | None
     recurring: bool
+    # Serie, zu der das Vorkommen gehört (eigene id bei Serien, Master-id bei Einzeländerungen)
+    series_id: int | None
     member_ids: list[int]
     color: str | None
     category: str | None

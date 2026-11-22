@@ -7,7 +7,7 @@ Familienkalender für Raspberry Pi mit Touch-Display (10–12") oder E-Ink-Anzei
 - Wählbare Farbschemata (Themes)
 - Suche nach Freizeitaktivitäten im Umkreis (Tag der offenen Tür, Messen, Ausstellungen …) mit Übernahme in den Kalender
 
-> **Status:** Grundgerüst und Backend-Kern sind umgesetzt. Kalenderansichten, Google-/iCloud-Sync,
+> **Status:** Grundgerüst, Backend-Kern und Kalenderansichten sind umgesetzt. Google-/iCloud-Sync,
 > Aktivitätensuche und E-Ink folgen. Siehe [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), Kap. 13.
 
 ## Struktur
@@ -37,7 +37,9 @@ uvicorn --factory app.main:app_factory --reload --port 8000
 cd frontend
 npm install
 npm run dev                              # http://localhost:5173, leitet /api und /ws an :8000 weiter
+npm test                                 # Unit-Tests (Vitest)
 npm run build                            # Build nach frontend/dist – wird vom Backend unter / ausgeliefert
+# Kiosk-Modus (Bildschirmtastatur usw.) testen: http://localhost:5173/?kiosk=1
 ```
 
 Konfiguration: `config/config.example.yaml` nach `/etc/familienplaner/config.yaml` kopieren oder mit

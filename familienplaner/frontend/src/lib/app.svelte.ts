@@ -30,8 +30,18 @@ class AppState {
   /** Wird bei jedem events.changed erhöht – Views laden daraufhin neu. */
   eventsVersion = $state(0);
   error = $state<string | null>(null);
+  /** Aktueller Tag/Minute (für „Heute“-Markierung und Jetzt-Linie), minütlich aktualisiert. */
+  now = $state(new Date());
+  /** Nur Termine dieser Mitglieder anzeigen (leer = alle). */
+  memberFilter = $state<number[]>([]);
+  /** Kiosk-Modus (Gerät am Pi): Bildschirmtastatur, Rückkehr zu „Heute“ bei Inaktivität. */
+  kiosk = $state(false);
+  toast = $state<string | null>(null);
+  private toastTimer: ReturnType<typeof setTimeout> | undefined;
 
   async init(): Promise<void> {
+    this.kiosk = detectKiosk();
+    setInterval(() => (this.now = new Date()), 30_000);
     try {
       const [info, settings, theme, themes, members, calendars, display, sync, auth] = await Promise.all([
         api.info(), api.settings(), api.activeTheme(), api.themes(), api.members(), api.calendars(),
@@ -102,6 +112,50 @@ class AppState {
 
   memberById(id: number): FamilyMember | undefined {
     return this.members.find((m) => m.id === id);
+  }
+
+  memberColor = (id: number): string | undefined => this.memberById(id)?.color;
+
+  get weekStartsOn(): 'monday' | 'sunday' {
+    return this.settings?.week_starts_on ?? 'monday';
+  }
+
+  get writableCalendars(): CalendarInfo[] {
+    return this.calendars.filter((c) => !c.read_only);
+  }
+
+  toggleMemberFilter(id: number): void {
+    this.memberFilter = this.memberFilter.includes(id)
+      ? this.memberFilter.filter((m) => m !== id)
+      : [...this.memberFilter, id];
+  }
+
+  /** Zurück zur Standardansicht und zum heutigen Tag (z. B. nach Inaktivität am Wanddisplay). */
+  resetToToday(): void {
+    this.refDate = new Date();
+    this.memberFilter = [];
+    this.navigate(this.settings?.default_view ?? 'week');
+  }
+
+  notify(message: string): void {
+    this.toast = message;
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => (this.toast = null), 4000);
+  }
+
+  async refreshAuth(): Promise<void> {
+    this.auth = await api.authStatus();
+  }
+}
+
+/** Kiosk-Modus über ?kiosk=1 (vom Kiosk-Dienst gesetzt) – wird im Browser gemerkt. */
+function detectKiosk(): boolean {
+  const param = new URLSearchParams(window.location.search).get('kiosk');
+  try {
+    if (param !== null) localStorage.setItem('fp-kiosk', param === '1' ? '1' : '0');
+    return localStorage.getItem('fp-kiosk') === '1';
+  } catch {
+    return param === '1';
   }
 }
 

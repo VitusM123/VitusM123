@@ -346,6 +346,9 @@ class CalendarService:
 
     def delete_event(self, event_id: int, occurrence_start: datetime | None = None) -> None:
         ev = self._get_event(event_id)
+        if ev.recurrence_master_id is not None and occurrence_start is None and ev.original_start is not None:
+            # Einzeländerung löschen = dieses Vorkommen der Serie absagen
+            return self.delete_event(ev.recurrence_master_id, ev.original_start)
         cal = self.get_calendar(ev.calendar_id)
         self._ensure_writable(cal)
 
@@ -470,6 +473,7 @@ class CalendarService:
             end=utc_to_date(end) if ev.all_day else end,
             all_day=ev.all_day, timezone=ev.timezone, rrule=ev.rrule,
             recurring=recurring or ev.recurrence_master_id is not None,
+            series_id=ev.recurrence_master_id or (ev.id if recurring else None),
             member_ids=member_ids, color=cal.color, category=ev.category, read_only=read_only,
         )
 

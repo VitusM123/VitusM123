@@ -12,8 +12,8 @@ StandardInput=tty
 Environment=XDG_RUNTIME_DIR=/run/user/1001
 ExecStartPre=/opt/familienplaner/deploy/kiosk/wait-for-backend.sh
 ExecStart=/usr/bin/cage -- /usr/bin/chromium --kiosk --noerrdialogs --disable-infobars \
-  --ozone-platform=wayland --touch-events=enabled --check-for-update-interval=31536000 \
-  http://localhost:8000
+  --lang=de-DE --ozone-platform=wayland --touch-events=enabled --check-for-update-interval=31536000 \
+  "http://localhost:8000/?kiosk=1"
 Restart=always
 
 [Install]

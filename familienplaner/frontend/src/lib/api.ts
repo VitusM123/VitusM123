@@ -51,11 +51,15 @@ export const api = {
   // Kalender & Mitglieder
   calendars: () => request<CalendarInfo[]>('GET', '/api/calendars'),
   updateCalendar: (id: number, data: Partial<CalendarInfo>) => request<CalendarInfo>('PUT', `/api/calendars/${id}`, data),
+  createCalendar: (data: { name: string; color?: string | null; default_member_id?: number | null }) =>
+    request<CalendarInfo>('POST', '/api/calendars', data),
+  deleteCalendar: (id: number) => request<void>('DELETE', `/api/calendars/${id}`),
   members: () => request<FamilyMember[]>('GET', '/api/members'),
   createMember: (data: Pick<FamilyMember, 'name' | 'color'> & { avatar?: string | null }) =>
     request<FamilyMember>('POST', '/api/members', data),
   updateMember: (id: number, data: Partial<FamilyMember>) => request<FamilyMember>('PUT', `/api/members/${id}`, data),
   deleteMember: (id: number) => request<void>('DELETE', `/api/members/${id}`),
+  reorderMembers: (ids: number[]) => request<FamilyMember[]>('PUT', '/api/members/order', ids),
 
   // Einstellungen & Themes
   themes: () => request<Theme[]>('GET', '/api/themes'),
@@ -77,4 +81,6 @@ export const api = {
   setupPin: (pin: string) => request<AuthStatus>('POST', '/api/auth/setup', { pin }),
   login: (pin: string) => request<AuthStatus>('POST', '/api/auth/login', { pin }),
   logout: () => request<AuthStatus>('POST', '/api/auth/logout'),
+  changePin: (current_pin: string, new_pin: string) =>
+    request<AuthStatus>('POST', '/api/auth/change-pin', { current_pin, new_pin }),
 };

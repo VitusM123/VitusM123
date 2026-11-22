@@ -1,6 +1,6 @@
 # Familienplaner – Architektur
 
-> Stand v0.1: Grundgerüst und Backend-Kern sind umgesetzt (siehe Kap. 13).
+> Stand v0.2: Grundgerüst, Backend-Kern und Kalenderansichten sind umgesetzt (siehe Kap. 13).
 > Dieses Dokument beschreibt Aufbau, Komponenten, Datenmodell, Schnittstellen und Deployment.
 
 ---
@@ -171,7 +171,10 @@ frontend/src/
 │   ├── ActivitiesView.svelte   Suche im Umkreis, Ergebnisliste, „Zum Kalender hinzufügen“
 │   ├── SettingsView.svelte     Konten, Mitglieder, Themes, Display, Activity-Quellen
 │   └── EInkView.svelte         Statische, kontrastreiche Ansicht für E-Ink-Screenshots
-└── components/             Header, TabBar, ScreenOff, ThemePicker (später: EventChip, DayCell, EventDialog …)
+├── lib/dates.ts, layout.ts, rrule.ts   Datumslogik, Überlappungs-Layout, Wiederholungsvorlagen (mit Vitest-Tests)
+├── lib/editor.svelte.ts    Zustand des Termin-Dialogs
+└── components/             Header, TabBar, Toolbar, EventChip, EventDialog, Modal, PinPad,
+                            OnScreenKeyboard, ScreenOff, Toast, ThemePicker, settings/*
 ```
 
 **Routen**
@@ -523,7 +526,7 @@ sequenceDiagram
 | Schritt | Status |
 |---|---|
 | 1. Fundament + Backend-Kern | ✅ umgesetzt |
-| 2. Ansichten | offen |
+| 2. Ansichten | ✅ umgesetzt |
 | 3. Google-Sync | offen (Sync-Rahmen vorhanden) |
 | 4. iCloud-Sync | offen |
 | 5. Activities | offen (Datenmodell und Ports vorhanden) |
@@ -536,6 +539,13 @@ Kalenderverwaltung, Admin-PIN mit Sitzungen und Login-Sperre, verschlüsselter S
 Event-Bus mit WebSocket, Scheduler (Nachtmodus, Auto-Theme, Backups, Sync-Rahmen), Themes (inkl. eigener),
 Display-Steuerung (Hardware-Backlight oder Software-Abdunklung). Frontend: App-Shell mit Uhr,
 Tab-Navigation, Theme-Umschaltung live per WebSocket und Bildschirm-aus-Overlay.
+
+**Umgesetzt in Schritt 2:** Monatsansicht, Wochenansicht (Zeitraster mit Überlappungs-Layout,
+Jetzt-Linie, Ganztagszeile), Familientabelle, Termin-Dialog (anlegen/ändern/löschen, Personen,
+Wiederholung mit Enddatum, Kalenderwahl; bei Serien „nur dieser Termin“ oder „alle Termine“),
+Filter nach Person, Wischgesten, Einstellungen (Mitglieder, Kalender, Startansicht, Wochenbeginn,
+Nachtmodus, automatisches Theme, Helligkeit, Admin-PIN per Ziffernblock). Kiosk-Modus (`?kiosk=1`):
+QWERTZ-Bildschirmtastatur, nach 5 min Inaktivität zurück zu „Heute“ und Verwaltung wieder sperren.
 
 **Ausbaustufen:**
 
