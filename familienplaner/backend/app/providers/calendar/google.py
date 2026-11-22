@@ -35,6 +35,7 @@ from app.providers.calendar.base import (
     RemoteNotFound,
     SyncTokenExpired,
 )
+from app.services.recurrence import until_as_date
 
 log = logging.getLogger(__name__)
 
@@ -124,7 +125,7 @@ def _credentials_from_token(data: dict[str, Any], previous: dict[str, Any] | Non
 
 class GoogleCalendarProvider:
     provider_id = "google"
-    implemented = True
+    whole_resource = False
 
     def __init__(
         self,
@@ -332,18 +333,6 @@ def _google_time(value: datetime, all_day: bool, tz: str) -> dict[str, str]:
     return {"dateTime": value.astimezone(ZoneInfo(tz)).isoformat(), "timeZone": tz}
 
 
-def _rrule_for_google(rule: str, all_day: bool) -> str:
-    """Bei ganztägigen Serien verlangt RFC 5545 ein UNTIL als Datum."""
-    if not all_day:
-        return rule
-    parts = []
-    for part in rule.split(";"):
-        if part.upper().startswith("UNTIL=") and "T" in part:
-            part = part.split("T")[0]
-        parts.append(part)
-    return ";".join(parts)
-
-
 def to_google(ev: OutgoingEvent) -> dict[str, Any]:
     body: dict[str, Any] = {
         "summary": ev.title,
@@ -354,7 +343,7 @@ def to_google(ev: OutgoingEvent) -> dict[str, Any]:
         "extendedProperties": {"private": {MEMBERS_KEY: ",".join(str(m) for m in ev.member_ids)}},
     }
     if ev.rrule:
-        lines = [f"RRULE:{_rrule_for_google(ev.rrule, ev.all_day)}"]
+        lines = [f"RRULE:{until_as_date(ev.rrule) if ev.all_day else ev.rrule}"]
         for ex in sorted(ev.exdates):
             if ev.all_day:
                 lines.append(f"EXDATE;VALUE=DATE:{utc_to_date(ex):%Y%m%d}")

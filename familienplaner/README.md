@@ -7,8 +7,8 @@ Familienkalender für Raspberry Pi mit Touch-Display (10–12") oder E-Ink-Anzei
 - Wählbare Farbschemata (Themes)
 - Suche nach Freizeitaktivitäten im Umkreis (Tag der offenen Tür, Messen, Ausstellungen …) mit Übernahme in den Kalender
 
-> **Status:** Grundgerüst, Backend, Kalenderansichten und Google-Sync sind umgesetzt. iCloud-Sync,
-> Aktivitätensuche und E-Ink folgen. Siehe [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), Kap. 13.
+> **Status:** Grundgerüst, Backend, Kalenderansichten, Google- und iCloud-Sync sind umgesetzt.
+> Aktivitätensuche, Pi-Installation und E-Ink folgen. Siehe [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), Kap. 13.
 
 ## Struktur
 
@@ -18,7 +18,7 @@ Familienkalender für Raspberry Pi mit Touch-Display (10–12") oder E-Ink-Anzei
 | `frontend/` | Svelte 5 + Vite + TypeScript: App-Shell, Ansichten |
 | `config/` | Beispielkonfiguration |
 | `deploy/` | systemd-Units, Kiosk-Setup, Install-Skript für den Raspberry Pi |
-| `docs/` | Architektur, [Google-Einrichtung](docs/GOOGLE_SETUP.md) |
+| `docs/` | Architektur, [Google-Einrichtung](docs/GOOGLE_SETUP.md), [iCloud-Einrichtung](docs/ICLOUD_SETUP.md) |
 
 ## Entwicklung
 

@@ -44,6 +44,16 @@ def _align_until(rule: str, aware: bool) -> str:
     return ";".join(parts)
 
 
+def until_as_date(rule: str) -> str:
+    """Bei ganztägigen Serien verlangt RFC 5545 ein UNTIL als Datum (``UNTIL=20270630``)."""
+    parts = []
+    for part in rule.split(";"):
+        if part.upper().startswith("UNTIL=") and "T" in part:
+            part = part.split("T")[0]
+        parts.append(part)
+    return ";".join(parts)
+
+
 def validate_rrule(rule: str, dtstart: datetime) -> str:
     rule = normalize_rrule(rule)
     try:

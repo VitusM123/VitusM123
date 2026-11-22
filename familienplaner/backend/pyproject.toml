@@ -18,7 +18,7 @@ dependencies = [
   "google-api-python-client>=2.140",
   "google-auth-oauthlib>=1.2",
   "caldav>=1.4",
-  "icalendar>=6.0",
+  "icalendar>=6.1",
   "python-dateutil>=2.9",
   # Activities
   "geopy>=2.4",

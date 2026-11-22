@@ -86,6 +86,8 @@ export const api = {
     request<GoogleConfig>('PUT', '/api/accounts/google/config', { client_id, client_secret }),
   googleStart: () => request<{ auth_url: string; redirect_uri: string }>('POST', '/api/accounts/google/start'),
   googleComplete: (url: string) => request<AccountInfo>('POST', '/api/accounts/google/complete', { url }),
+  icloudConnect: (apple_id: string, app_password: string, server_url?: string | null) =>
+    request<AccountInfo>('POST', '/api/accounts/icloud', { apple_id, app_password, server_url: server_url || null }),
 
   // Admin-PIN
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),

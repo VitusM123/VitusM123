@@ -12,6 +12,7 @@ gewinnt die jüngere Änderung (``updated`` remote gegen ``updated_at`` lokal).
 import asyncio
 import json
 import logging
+import uuid
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -214,6 +215,7 @@ class SyncService:
         session.flush()
         for remote in instances:
             stats.add(self._apply_instance(session, cal, remote))
+        self._prune_instances(session, cal, masters, instances)
 
         if changes.full:
             seen = {e.remote_id for e in changes.events if not e.cancelled}
@@ -301,6 +303,24 @@ class SyncService:
             self._set_members(session, local.id, ids)
         return stats
 
+    def _prune_instances(self, session: Session, cal: Calendar, masters: list[RemoteEvent],
+                         instances: list[RemoteEvent]) -> None:
+        """CalDAV liefert Serien immer vollständig: Einzeländerungen, die remote nicht mehr existieren,
+        werden lokal entfernt (sofern nicht lokal geändert)."""
+        present = {i.remote_id for i in instances}
+        for remote in masters:
+            if not remote.complete_instances or remote.cancelled:
+                continue
+            master = session.exec(select(Event).where(Event.calendar_id == cal.id,
+                                                      Event.remote_id == remote.remote_id)).first()
+            if master is None or master.pending_push:
+                continue
+            gone = session.exec(select(Event).where(
+                Event.recurrence_master_id == master.id, Event.pending_push == False,  # noqa: E712
+                Event.deleted == False,  # noqa: E712
+            )).all()
+            self._hard_delete(session, [e for e in gone if e.remote_id not in present])
+
     @staticmethod
     def _local_wins(local: Event, remote: RemoteEvent) -> bool:
         if not local.pending_push:
@@ -311,6 +331,8 @@ class SyncService:
 
     @staticmethod
     def _copy_fields(ev: Event, remote: RemoteEvent) -> None:
+        if remote.uid:
+            ev.remote_uid = remote.uid
         ev.title = remote.title
         ev.description = remote.description
         ev.location = remote.location
@@ -358,6 +380,7 @@ class SyncService:
     def _outgoing(self, session: Session, ev: Event, master: Event | None) -> OutgoingEvent:
         members = list(session.exec(select(EventMember.member_id).where(EventMember.event_id == ev.id)))
         return OutgoingEvent(
+            uid=ev.remote_uid,
             title=ev.title, start=ev.start, end=ev.end, all_day=ev.all_day, timezone=ev.timezone,
             description=ev.description, location=ev.location, rrule=ev.rrule,
             exdates=[datetime.fromisoformat(x) for x in ev.exdates], member_ids=members,
@@ -366,6 +389,8 @@ class SyncService:
         )
 
     async def _push(self, session: Session, cal: Calendar, provider: CalendarProvider) -> int:
+        if getattr(provider, "whole_resource", False):
+            return await self._push_resources(session, cal, provider)
         pending = session.exec(select(Event).where(Event.calendar_id == cal.id,
                                                    Event.pending_push == True)).all()  # noqa: E712
         # Reihenfolge: Serien/Einzeltermine → Einzelvorkommen → Löschungen
@@ -407,4 +432,55 @@ class SyncService:
             except ProviderError as exc:
                 session.rollback()
                 log.warning("Termin %s konnte nicht übertragen werden: %s", ev.id, exc)
+        return pushed
+
+    async def _push_resources(self, session: Session, cal: Calendar, provider: CalendarProvider) -> int:
+        """CalDAV: Serie und alle Einzelvorkommen werden gemeinsam als eine Ressource geschrieben."""
+        pending = session.exec(select(Event).where(Event.calendar_id == cal.id,
+                                                   Event.pending_push == True)).all()  # noqa: E712
+        roots: dict[int, Event] = {}
+        for ev in pending:
+            root = ev if ev.recurrence_master_id is None else session.get(Event, ev.recurrence_master_id)
+            if root is None:
+                continue
+            if ev is not root and ev.deleted:
+                # abgesagtes Einzelvorkommen: wird über EXDATE der Serie übertragen
+                ev.pending_push = False
+                session.add(ev)
+            roots[root.id] = root
+        pushed = 0
+        for root in roots.values():
+            try:
+                if root.deleted:
+                    if root.remote_id:
+                        await provider.delete_event(cal.remote_id, root.remote_id)
+                    self._hard_delete(session, [root])
+                else:
+                    overrides = session.exec(select(Event).where(Event.recurrence_master_id == root.id,
+                                                                 Event.deleted == False)).all()  # noqa: E712
+                    if not root.remote_uid:
+                        root.remote_uid = str(uuid.uuid4())
+                    data = self._outgoing(session, root, None)
+                    data.instances = [self._outgoing(session, o, root) for o in overrides
+                                      if o.original_start is not None] if root.rrule else []
+                    if root.remote_id:
+                        try:
+                            root.etag = await provider.update_event(cal.remote_id, root.remote_id, data)
+                        except RemoteNotFound:
+                            root.remote_id, root.etag = await provider.create_event(cal.remote_id, data)
+                    else:
+                        root.remote_id, root.etag = await provider.create_event(cal.remote_id, data)
+                    root.pending_push = False
+                    session.add(root)
+                    for o in overrides:
+                        o.remote_id = provider.instance_id(root.remote_id, o.original_start, o.all_day)
+                        o.pending_push = False
+                        session.add(o)
+                session.commit()
+                pushed += 1
+            except AuthError:
+                raise
+            except ProviderError as exc:
+                session.rollback()
+                log.warning("Termin %s konnte nicht übertragen werden: %s", root.id, exc)
         return pushed

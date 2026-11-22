@@ -41,6 +41,7 @@ class RemoteEvent:
 
     remote_id: str
     etag: str | None = None
+    uid: str | None = None
     cancelled: bool = False
     title: str = ""
     description: str | None = None
@@ -57,6 +58,9 @@ class RemoteEvent:
     # Zuordnung zu Familienmitgliedern (vom Familienplaner selbst gespeichert); None = unbekannt
     member_ids: list[int] | None = None
     updated: datetime | None = None
+    # True (CalDAV): die Änderung enthält alle Einzelvorkommen der Serie – lokal nicht mehr
+    # enthaltene Einzeländerungen werden entfernt
+    complete_instances: bool = False
 
 
 @dataclass
@@ -75,6 +79,9 @@ class OutgoingEvent:
     member_ids: list[int] = field(default_factory=list)
     recurring_remote_id: str | None = None
     original_start: datetime | None = None
+    uid: str | None = None
+    # Nur bei Providern mit ganzen Ressourcen (CalDAV): geänderte Einzelvorkommen der Serie
+    instances: list["OutgoingEvent"] = field(default_factory=list)
 
 
 @dataclass
@@ -86,6 +93,8 @@ class ChangeSet:
 
 class CalendarProvider(Protocol):
     provider_id: str
+    # True: Serie und Einzelvorkommen werden als eine Ressource geschrieben (CalDAV)
+    whole_resource: bool
 
     async def list_calendars(self) -> list[RemoteCalendar]: ...
     async def fetch_changes(self, calendar_remote_id: str, sync_token: str | None) -> ChangeSet: ...

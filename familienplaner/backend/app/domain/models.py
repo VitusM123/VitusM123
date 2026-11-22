@@ -82,6 +82,7 @@ class Event(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     calendar_id: int = Field(foreign_key="calendar.id", index=True)
     remote_id: str | None = Field(default=None, index=True)
+    remote_uid: str | None = None      # iCalendar-UID (CalDAV)
     etag: str | None = None
     title: str
     description: str | None = None

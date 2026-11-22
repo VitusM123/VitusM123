@@ -12,7 +12,7 @@ from app.core.deps import get_settings, require_admin
 from app.domain.models import Account, Calendar, Event, EventMember, ProviderType
 from app.providers.calendar.base import ProviderError
 from app.schemas import AccountOut
-from app.services import google_service
+from app.services import google_service, icloud_service
 from app.services.errors import ForbiddenError, NotFoundError, ValidationError
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
@@ -29,6 +29,13 @@ class GoogleConfigOut(BaseModel):
     source: str | None
     client_id: str | None
     redirect_uri: str
+
+
+class ICloudIn(BaseModel):
+    apple_id: str = Field(min_length=3, max_length=200)
+    app_password: str = Field(min_length=4, max_length=200)
+    server_url: str | None = Field(default=None, max_length=300,
+                                   description="Nur für andere CalDAV-Server; leer = iCloud")
 
 
 class CompleteIn(BaseModel):
@@ -109,6 +116,23 @@ async def google_callback(request: Request, state: str | None = None, code: str 
     except (ProviderError, ValidationError) as exc:
         return RedirectResponse(f"/?google_error={quote(str(exc))}#/settings")
     return RedirectResponse("/?google=connected#/settings")
+
+
+# --- iCloud ---------------------------------------------------------------------------------
+
+@router.post("/icloud", response_model=AccountOut, dependencies=admin)
+async def icloud_connect(body: ICloudIn, request: Request, session: Session = Depends(get_session),
+                         settings: Settings = Depends(get_settings)):
+    """iCloud-Konto verbinden (Apple-ID + app-spezifisches Passwort)."""
+    try:
+        async with request.app.state.sync.http_client() as http:
+            account = await icloud_service.connect(session, settings, request.app.state.secrets, http,
+                                                   body.apple_id, body.app_password, body.server_url)
+    except ProviderError as exc:
+        raise ValidationError(str(exc)) from exc
+    request.app.state.sync.request_sync(0.1)
+    await request.app.state.bus.publish("calendars.changed", {})
+    return _account_out(session, account)
 
 
 # --- Allgemein ------------------------------------------------------------------------------

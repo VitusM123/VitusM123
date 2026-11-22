@@ -94,7 +94,7 @@
     {/if}
   </li>
 </ul>
-<p class="note">Google-Kalender erscheinen hier nach dem Verbinden eines Kontos. Schreibgeschützte Kalender
+<p class="note">Google- und iCloud-Kalender erscheinen hier nach dem Verbinden eines Kontos. Schreibgeschützte Kalender
   (z. B. Feiertage) werden angezeigt, können aber nicht bearbeitet werden.</p>
 
 <style>

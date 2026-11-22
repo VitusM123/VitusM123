@@ -5,7 +5,7 @@
   import { onMount } from 'svelte';
 
   type Field = HTMLInputElement | HTMLTextAreaElement;
-  const TEXT_TYPES = new Set(['text', 'search', 'email', 'url', '']);
+  const TEXT_TYPES = new Set(['text', 'search', 'email', 'url', 'password', '']);
 
   let target = $state<Field | null>(null);
   let shift = $state(false);

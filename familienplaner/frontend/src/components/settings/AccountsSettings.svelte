@@ -12,6 +12,12 @@
   let busy = $state(false);
   let confirmRemove = $state<number | null>(null);
   let showSetup = $state(false);
+  let icloudForm = $state(false);
+  let appleId = $state('');
+  let appPassword = $state('');
+  let serverUrl = $state('');
+  let advanced = $state(false);
+  let icloudError = $state<string | null>(null);
 
   const external = $derived(accounts.filter((a) => a.provider !== 'local'));
 
@@ -66,6 +72,31 @@
     });
   };
 
+  function openICloud(prefill = '') {
+    appleId = prefill;
+    appPassword = '';
+    icloudError = null;
+    icloudForm = true;
+  }
+
+  async function connectICloud(e: SubmitEvent) {
+    e.preventDefault();
+    busy = true;
+    icloudError = null;
+    try {
+      await api.icloudConnect(appleId, appPassword, advanced ? serverUrl : null);
+      icloudForm = false;
+      appPassword = '';
+      app.notify('iCloud verbunden – Kalender werden geladen …');
+      await load();
+      app.calendars = await api.calendars();
+    } catch (err) {
+      icloudError = err instanceof ApiError ? err.message : 'Verbindung fehlgeschlagen';
+    } finally {
+      busy = false;
+    }
+  }
+
   const syncNow = (id: number) => guard(async () => {
     app.sync = await api.syncAccount(id);
     await load();
@@ -100,6 +131,8 @@
         <button class="btn" onclick={() => syncNow(a.id)} disabled={busy}>Jetzt synchronisieren</button>
         {#if a.last_error && a.provider === 'google'}
           <button class="btn primary" onclick={connect} disabled={busy}>Neu verbinden</button>
+        {:else if a.last_error && a.provider === 'icloud'}
+          <button class="btn primary" onclick={() => openICloud(a.display_name)} disabled={busy}>Neu verbinden</button>
         {/if}
         {#if confirmRemove === a.id}
           <button class="btn danger" onclick={() => remove(a.id)} disabled={busy}>Trennen bestätigen</button>
@@ -151,9 +184,37 @@
     {:else}
       <div class="row">
         <button class="btn primary" onclick={connect} disabled={busy}>+ Google-Konto verbinden</button>
-        <span class="muted">Apple/iCloud folgt im nächsten Schritt.</span>
       </div>
     {/if}
+  {/if}
+
+  {#if icloudForm}
+    <form class="box form" onsubmit={connectICloud}>
+      <p><strong>iCloud-Kalender verbinden</strong></p>
+      <ol class="steps">
+        <li>Auf <code>account.apple.com</code> anmelden → <em>Anmeldung und Sicherheit</em> →
+          <em>App-spezifische Passwörter</em> → neues Passwort „Familienplaner“ erstellen.</li>
+        <li>Apple-ID und das erzeugte Passwort (Format <code>abcd-efgh-ijkl-mnop</code>) hier eintragen.
+          Das normale Apple-ID-Passwort funktioniert nicht.</li>
+      </ol>
+      <input type="text" placeholder="Apple-ID (E-Mail)" bind:value={appleId} autocomplete="username" />
+      <input type="password" placeholder="App-spezifisches Passwort" bind:value={appPassword} autocomplete="off" />
+      <label class="adv"><input type="checkbox" bind:checked={advanced} /> Anderer CalDAV-Server (z. B. Nextcloud)</label>
+      {#if advanced}
+        <input type="text" placeholder="https://cloud.example.org/remote.php/dav" bind:value={serverUrl} />
+      {/if}
+      {#if icloudError}<p class="err" role="alert">⚠ {icloudError}</p>{/if}
+      <div class="row">
+        <button type="button" class="btn ghost" onclick={() => (icloudForm = false)}>Abbrechen</button>
+        <button type="submit" class="btn primary" disabled={busy || !appleId || !appPassword}>
+          {busy ? 'Verbinde …' : 'Verbinden'}
+        </button>
+      </div>
+    </form>
+  {:else}
+    <div class="row">
+      <button class="btn primary" onclick={() => openICloud()} disabled={busy}>+ iCloud-Kalender verbinden</button>
+    </div>
   {/if}
 </div>
 
@@ -173,6 +234,8 @@
   .actions, .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .form { display: flex; flex-direction: column; gap: 10px; }
   .form p, .box p { margin: 0 0 8px; }
+  .adv { display: flex; align-items: center; gap: 8px; color: var(--color-text-muted); min-height: 40px; }
+  .adv input { width: 22px; height: 22px; min-height: 0; }
   .steps { margin: 0 0 12px; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
   code { background: var(--color-bg); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
   input {

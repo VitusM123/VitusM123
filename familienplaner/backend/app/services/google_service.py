@@ -9,7 +9,6 @@ from sqlmodel import Session, select
 from app.config import Settings
 from app.core.security import SecretBox
 from app.domain.models import Account, ProviderType, Setting
-from app.providers.calendar.base import AuthError
 from app.providers.calendar.google import (
     GoogleCalendarProvider,
     build_auth_url,
@@ -18,7 +17,7 @@ from app.providers.calendar.google import (
     pkce_pair,
 )
 from app.services.errors import ConflictError, ValidationError
-from app.services.sync_service import load_credentials, store_credentials
+from app.services.sync_service import store_credentials
 
 CLIENT_SETTING_KEY = "google_client"
 PENDING_TTL = 15 * 60
@@ -125,25 +124,3 @@ async def complete_auth(session: Session, settings: Settings, box: SecretBox, pe
     session.commit()
     session.refresh(account)
     return account
-
-
-def make_provider_factory(settings: Settings, box: SecretBox):
-    """Erzeugt zu einem Konto den passenden Provider (None = Anbieter noch nicht unterstützt)."""
-
-    def factory(session: Session, account: Account, http: httpx.AsyncClient):
-        if account.provider != ProviderType.GOOGLE:
-            return None   # iCloud folgt in Schritt 4
-        client = get_client(session, settings, box)
-        if client is None:
-            raise AuthError("Google-Zugang ist nicht eingerichtet (Client-ID/Secret fehlen)")
-        creds = load_credentials(box, account)
-
-        def on_credentials(updated: dict) -> None:
-            store_credentials(box, account, updated)
-            session.add(account)
-            session.commit()
-
-        return GoogleCalendarProvider(http, creds, client.client_id, client.client_secret,
-                                      on_credentials=on_credentials, default_timezone=settings.locale.timezone)
-
-    return factory

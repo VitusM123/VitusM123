@@ -85,7 +85,7 @@ flowchart LR
 | Backend | Python 3.11+, **FastAPI**, Uvicorn | Async, schnell, gute Libraries für CalDAV, Google API und E-Ink |
 | Persistenz | **SQLite** + SQLModel (SQLAlchemy) + Alembic | Keine Server-DB nötig, einfache Backups |
 | Hintergrundjobs | APScheduler (im Backend-Prozess) | Kein separater Broker auf dem Pi nötig |
-| Kalender-Libs | `google-api-python-client`, `google-auth-oauthlib`. `caldav`, `icalendar`, `python-dateutil` (RRULE) | Etablierte Standards |
+| Kalender-Libs | Google Calendar REST und CalDAV direkt über `httpx` (async, gegen simulierte Server testbar), `icalendar`, `python-dateutil` (RRULE) | Wenige Abhängigkeiten, einheitliches async-Modell |
 | Activities | `httpx`, `selectolax`/`beautifulsoup4` (Scraper), `icalendar`, `geopy` | Plugin-basiert |
 | Frontend | **Svelte 5 + Vite + TypeScript**, statischer Build | Sehr kleiner Bundle-Footprint → flüssig auf dem Pi |
 | Theming | CSS Custom Properties, Theme-Definitionen als JSON | Laufzeit-Umschaltung ohne Rebuild |
@@ -118,7 +118,8 @@ backend/app/
 │   ├── calendar/
 │   │   ├── base.py         Port: CalendarProvider
 │   │   ├── google.py       Adapter: Google Calendar API
-│   │   └── icloud.py       Adapter: iCloud CalDAV
+│   │   ├── caldav.py       Adapter: CalDAV allgemein (sync-collection, multiget, iCalendar)
+│   │   └── icloud.py       Adapter: iCloud (CalDAV mit iCloud-Adresse)
 │   └── activities/
 │       ├── base.py         Port: ActivitySource
 │       ├── ical_feed.py    Adapter: generische iCal/ICS-Feeds (Museen, Schulen, Städte)
@@ -534,7 +535,7 @@ sequenceDiagram
 | 1. Fundament + Backend-Kern | ✅ umgesetzt |
 | 2. Ansichten | ✅ umgesetzt |
 | 3. Google-Sync | ✅ umgesetzt (gegen simulierten Google-Server getestet, noch nicht gegen echtes Google) |
-| 4. iCloud-Sync | offen |
+| 4. iCloud-Sync | ✅ umgesetzt (gegen simulierten iCloud-Server getestet, noch nicht gegen echtes iCloud) |
 | 5. Activities | offen (Datenmodell und Ports vorhanden) |
 | 6. Deployment | teilweise (systemd-Units, Install-Skript als Gerüst) |
 | 7. E-Ink | offen |
@@ -559,6 +560,13 @@ Kalenderliste (inkl. schreibgeschützter Kalender), Delta-Sync mit Paging und Vo
 Serien mit EXDATE, geänderte und abgesagte Einzelvorkommen in beide Richtungen, Personen-Zuordnung über
 `extendedProperties.private`, Konfliktregel „jüngere Änderung gewinnt“, Sync 2 s nach lokalen Änderungen.
 Behoben: ganztägige Serien mit Enddatum wurden nur einmal angezeigt.
+
+**Umgesetzt in Schritt 4:** iCloud über einen eigenen asynchronen CalDAV-Client: Erkennung
+(`current-user-principal` → `calendar-home-set`), Kalenderliste (Erinnerungen/VTODO ausgeblendet,
+Schreibrechte aus `current-user-privilege-set`), Delta-Sync per `sync-collection` mit Rückfall auf
+PROPFIND, `calendar-multiget`, Serien mit EXDATE und Einzelvorkommen (RECURRENCE-ID) als eine Ressource,
+VTIMEZONE beim Schreiben, Personen-Zuordnung über `X-FAMILIENPLANER-MEMBERS`. Funktioniert auch mit
+anderen CalDAV-Servern (Nextcloud …). Anleitung: [ICLOUD_SETUP.md](ICLOUD_SETUP.md).
 
 **Ausbaustufen:**
 

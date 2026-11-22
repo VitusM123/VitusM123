@@ -16,7 +16,8 @@ from app.core.scheduler import create_scheduler
 from app.core.security import LoginThrottle, SecretBox
 from app.services.display_service import DisplayService
 from app.services.errors import DomainError
-from app.services.google_service import PendingAuth, make_provider_factory
+from app.services.google_service import PendingAuth
+from app.services.provider_factory import make_provider_factory
 from app.services.sync_service import SyncService
 from app.services.theme_service import ThemeService
 
