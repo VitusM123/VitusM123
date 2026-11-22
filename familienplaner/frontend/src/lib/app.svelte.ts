@@ -29,6 +29,8 @@ class AppState {
   connected = $state(false);
   /** Wird bei jedem events.changed erhöht – Views laden daraufhin neu. */
   eventsVersion = $state(0);
+  /** Wird bei jedem activities.changed erhöht (neue Veranstaltungen abgerufen). */
+  activitiesVersion = $state(0);
   error = $state<string | null>(null);
   /** Aktueller Tag/Minute (für „Heute“-Markierung und Jetzt-Linie), minütlich aktualisiert. */
   now = $state(new Date());
@@ -104,6 +106,9 @@ class AppState {
         break;
       case 'display.changed':
         this.display = event.payload as unknown as DisplayState;
+        break;
+      case 'activities.changed':
+        this.activitiesVersion++;
         break;
       case 'sync.status':
         this.sync = event.payload as unknown as SyncStatus;

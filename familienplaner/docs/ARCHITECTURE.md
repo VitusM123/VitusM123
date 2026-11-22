@@ -536,7 +536,7 @@ sequenceDiagram
 | 2. Ansichten | ✅ umgesetzt |
 | 3. Google-Sync | ✅ umgesetzt (gegen simulierten Google-Server getestet, noch nicht gegen echtes Google) |
 | 4. iCloud-Sync | ✅ umgesetzt (gegen simulierten iCloud-Server getestet, noch nicht gegen echtes iCloud) |
-| 5. Activities | offen (Datenmodell und Ports vorhanden) |
+| 5. Activities | ✅ umgesetzt (gegen simulierte Quellen und Nominatim getestet) |
 | 6. Deployment | teilweise (systemd-Units, Install-Skript als Gerüst) |
 | 7. E-Ink | offen |
 
@@ -567,6 +567,15 @@ Schreibrechte aus `current-user-privilege-set`), Delta-Sync per `sync-collection
 PROPFIND, `calendar-multiget`, Serien mit EXDATE und Einzelvorkommen (RECURRENCE-ID) als eine Ressource,
 VTIMEZONE beim Schreiben, Personen-Zuordnung über `X-FAMILIENPLANER-MEMBERS`. Funktioniert auch mit
 anderen CalDAV-Servern (Nextcloud …). Anleitung: [ICLOUD_SETUP.md](ICLOUD_SETUP.md).
+
+**Umgesetzt in Schritt 5:** Quellen iCal, RSS (Datum aus Event-Feldern oder deutschem Freitext),
+Ticketmaster (Umkreissuche, API-Schlüssel verschlüsselt) und Webseiten per CSS-Selektoren; Abruf alle
+`refresh_hours` in die lokale Tabelle `activity` (90 Tage voraus), Geocoding über Nominatim (≤ 1/s,
+dauerhaft gecacht, max. 120 neue Adressen je Abruf), Kategorisierung über deutsche Schlüsselwörter,
+Duplikaterkennung über Titel + Tag + Ort (auch quellenübergreifend), Umkreissuche (Bounding-Box +
+Haversine), Übernahme in den Kalender mit Personen. Oberfläche: Filter (Ort, Umkreis, Zeitraum, Kategorien,
+Suchbegriff), Ergebnisliste nach Tagen, Quellenverwaltung mit „Testen“. Anleitung:
+[ACTIVITIES_SETUP.md](ACTIVITIES_SETUP.md).
 
 **Ausbaustufen:**
 

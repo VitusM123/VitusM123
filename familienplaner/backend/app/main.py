@@ -6,6 +6,7 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlmodel import Session
 
 from app import __version__
 from app.api import accounts, activities, auth, calendar, display, members, settings, system
@@ -14,8 +15,10 @@ from app.core.db import init_db
 from app.core.events import EventBus
 from app.core.scheduler import create_scheduler
 from app.core.security import LoginThrottle, SecretBox
+from app.services.activity_service import ActivityService
 from app.services.display_service import DisplayService
 from app.services.errors import DomainError
+from app.services.geo_service import GeoService
 from app.services.google_service import PendingAuth
 from app.services.provider_factory import make_provider_factory
 from app.services.sync_service import SyncService
@@ -57,6 +60,10 @@ def create_app(
         provider_factory=make_provider_factory(cfg, app.state.secrets), http_transport=http_transport,
     )
     app.state.google_pending = PendingAuth()
+    app.state.activities = ActivityService(app.state.engine, cfg, app.state.secrets, GeoService(),
+                                           app.state.bus, http_transport=http_transport)
+    with Session(app.state.engine) as session:
+        app.state.activities.import_config_sources(session)
     app.state.login_throttle = LoginThrottle()
 
     @app.exception_handler(DomainError)

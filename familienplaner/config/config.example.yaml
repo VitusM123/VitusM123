@@ -58,13 +58,17 @@ activities:
     provider: nominatim
     user_agent: familienplaner
   sources: []
-  # Beispiele:
+  # Quellen werden normalerweise in der Weboberfläche angelegt. Einträge hier werden beim Start
+  # einmalig übernommen (Name als Schlüssel). Beispiele:
   # - type: ical
-  #   name: Museum XY
-  #   url: https://example.org/events.ics
-  # - type: rss
   #   name: Stadt Veranstaltungen
-  #   url: https://example.org/events.rss
+  #   url: https://www.example-stadt.de/veranstaltungen.ics
+  #   category: kids            # optional: Standardkategorie
+  #   lat: 48.137               # optional: Ort für Termine ohne Adresse
+  #   lon: 11.575
+  # - type: rss
+  #   name: Museum
+  #   url: https://www.example-museum.de/feed.rss
   # - type: ticketmaster
   #   name: Ticketmaster
-  #   api_key_env: TICKETMASTER_API_KEY
+  #   api_key: "…"              # wird in der Datenbank verschlüsselt gespeichert

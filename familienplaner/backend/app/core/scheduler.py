@@ -3,10 +3,11 @@
 - calendar_sync   alle ``sync.interval_minutes``
 - minute_tick     jede Minute: Nachtmodus, automatischer Theme-Wechsel
 - db_backup       täglich 03:17
-(activity_refresh und eink_refresh folgen mit den jeweiligen Ausbaustufen)
+- activity_refresh alle ``activities.refresh_hours`` (erster Lauf 2 min nach dem Start)
+(eink_refresh folgt mit der E-Ink-Ausbaustufe)
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -51,4 +52,7 @@ def create_scheduler(app: FastAPI) -> AsyncIOScheduler:
     scheduler.add_job(minute_tick, "cron", second=5, args=[app], id="minute_tick",
                       max_instances=1, coalesce=True)
     scheduler.add_job(run_backup, "cron", hour=3, minute=17, args=[app], id="db_backup")
+    scheduler.add_job(app.state.activities.refresh_all, "interval", hours=settings.activities.refresh_hours,
+                      id="activity_refresh", max_instances=1, coalesce=True,
+                      next_run_time=datetime.now(ZoneInfo(settings.locale.timezone)) + timedelta(minutes=2))
     return scheduler

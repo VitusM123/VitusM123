@@ -1,6 +1,6 @@
 // Typisierter REST-Client für das Backend.
 import type {
-  AccountInfo, GoogleConfig,
+  AccountInfo, GoogleConfig, ActivitySearch, ActivitySearchResult, ActivitySourceInfo, ActivitySourceType,
   AuthStatus, CalendarInfo, DisplayState, EventInput, EventOccurrence, FamilyMember, FamilyTable,
   ServerInfo, SyncStatus, Theme, UserSettings,
 } from './types';
@@ -88,6 +88,24 @@ export const api = {
   googleComplete: (url: string) => request<AccountInfo>('POST', '/api/accounts/google/complete', { url }),
   icloudConnect: (apple_id: string, app_password: string, server_url?: string | null) =>
     request<AccountInfo>('POST', '/api/accounts/icloud', { apple_id, app_password, server_url: server_url || null }),
+
+  // Freizeitaktivitäten
+  searchActivities: (q: ActivitySearch) => request<ActivitySearchResult>('POST', '/api/activities/search', q),
+  addActivity: (id: number, data: { calendar_id?: number | null; member_ids: number[] }) =>
+    request<EventOccurrence>('POST', `/api/activities/${id}/add-to-calendar`, data),
+  geocode: (address: string) =>
+    request<{ lat: number; lon: number; label: string }>('POST', '/api/activities/geocode', { address }),
+  activitySources: () => request<ActivitySourceInfo[]>('GET', '/api/activities/sources'),
+  createActivitySource: (data: { type: ActivitySourceType; name: string; config: Record<string, string> }) =>
+    request<ActivitySourceInfo>('POST', '/api/activities/sources', data),
+  updateActivitySource: (id: number, data: { name?: string; enabled?: boolean; config?: Record<string, string> }) =>
+    request<ActivitySourceInfo>('PUT', `/api/activities/sources/${id}`, data),
+  deleteActivitySource: (id: number) => request<void>('DELETE', `/api/activities/sources/${id}`),
+  testActivitySource: (data: { type: ActivitySourceType; name: string; config: Record<string, string> }) =>
+    request<{ count: number; sample: { title: string; start: string; all_day: boolean; venue: string | null }[] }>(
+      'POST', '/api/activities/sources/test', data),
+  refreshActivities: () =>
+    request<{ source_id: number; name: string; count: number; error: string | null }[]>('POST', '/api/activities/refresh'),
 
   // Admin-PIN
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),

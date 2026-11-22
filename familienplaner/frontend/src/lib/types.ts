@@ -90,6 +90,61 @@ export interface UserSettings {
   activity_radius_km: number;
 }
 
+export type ActivityCategory =
+  | 'open_day' | 'fair' | 'exhibition' | 'market' | 'festival'
+  | 'concert' | 'theater' | 'sports' | 'kids' | 'workshop' | 'other';
+
+export interface Activity {
+  id: number;
+  title: string;
+  description: string | null;
+  category: ActivityCategory;
+  /** ganztägig: "YYYY-MM-DD", sonst ISO-UTC */
+  start: string;
+  end: string | null;
+  all_day: boolean;
+  venue: string | null;
+  address: string | null;
+  lat: number | null;
+  lon: number | null;
+  distance_km: number | null;
+  url: string | null;
+  image_url: string | null;
+  source: string;
+  event_id: number | null;
+}
+
+export interface ActivitySearch {
+  address?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+  radius_km: number;
+  date_from: string;
+  date_to: string;
+  categories: ActivityCategory[];
+  query?: string | null;
+  include_unlocated?: boolean;
+}
+
+export interface ActivitySearchResult {
+  center: { lat: number; lon: number; label: string };
+  results: Activity[];
+  total_in_db: number;
+}
+
+export type ActivitySourceType = 'ical' | 'rss' | 'ticketmaster' | 'scraper';
+
+export interface ActivitySourceInfo {
+  id: number;
+  type: ActivitySourceType;
+  name: string;
+  config: Record<string, string>;
+  enabled: boolean;
+  last_fetch: string | null;
+  last_error: string | null;
+  last_count: number;
+}
+
 export interface Theme {
   id: string;
   name: string;
@@ -144,7 +199,7 @@ export interface ServerInfo {
 
 export type ServerEventType =
   | 'events.changed' | 'calendars.changed' | 'members.changed' | 'sync.status'
-  | 'theme.changed' | 'settings.changed' | 'display.changed';
+  | 'theme.changed' | 'settings.changed' | 'display.changed' | 'activities.changed';
 
 export interface ServerEvent {
   type: ServerEventType;

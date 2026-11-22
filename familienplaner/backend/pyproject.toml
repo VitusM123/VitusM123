@@ -23,7 +23,7 @@ dependencies = [
   # Activities
   "geopy>=2.4",
   "feedparser>=6.0",
-  "selectolax>=0.3",
+  "selectolax>=0.3.21",
 ]
 
 [project.optional-dependencies]

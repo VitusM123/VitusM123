@@ -44,7 +44,7 @@ class ActivityCategory(str, Enum):
 class ActivitySourceType(str, Enum):
     ICAL = "ical"
     RSS = "rss"
-    API = "api"
+    TICKETMASTER = "ticketmaster"
     SCRAPER = "scraper"
 
 
@@ -117,6 +117,9 @@ class ActivitySource(SQLModel, table=True):
     name: str
     config: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     enabled: bool = True
+    last_fetch: datetime | None = Field(default=None, sa_column=_ts(nullable=True))
+    last_error: str | None = None
+    last_count: int = 0
 
 
 class Activity(SQLModel, table=True):
@@ -128,6 +131,7 @@ class Activity(SQLModel, table=True):
     category: ActivityCategory = ActivityCategory.OTHER
     start: datetime = Field(sa_column=_ts(index=True))
     end: datetime | None = Field(default=None, sa_column=_ts(nullable=True))
+    all_day: bool = False
     venue: str | None = None
     address: str | None = None
     lat: float | None = None

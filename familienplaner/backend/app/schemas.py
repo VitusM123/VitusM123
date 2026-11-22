@@ -269,3 +269,81 @@ class DisplayState(BaseModel):
 class DisplayUpdate(BaseModel):
     screen_on: bool | None = None
     brightness: int | None = Field(default=None, ge=0, le=100)
+
+
+# --- Freizeitaktivitäten --------------------------------------------------------------------
+
+class ActivitySourceIn(BaseModel):
+    type: Literal["ical", "rss", "ticketmaster", "scraper"]
+    name: str = Field(min_length=1, max_length=100)
+    config: dict = Field(default_factory=dict)
+    enabled: bool = True
+
+
+class ActivitySourceUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    config: dict | None = None
+    enabled: bool | None = None
+
+
+class ActivitySourceOut(BaseModel):
+    id: int
+    type: str
+    name: str
+    config: dict
+    enabled: bool
+    last_fetch: datetime | None
+    last_error: str | None
+    last_count: int
+
+
+class ActivitySearch(BaseModel):
+    address: str | None = Field(default=None, max_length=200, description="Leer = Wohnort")
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    radius_km: float = Field(default=30, gt=0, le=300)
+    date_from: date
+    date_to: date
+    categories: list[str] = Field(default_factory=list)
+    query: str | None = Field(default=None, max_length=100)
+    include_unlocated: bool = False
+
+
+class ActivityOut(BaseModel):
+    id: int
+    title: str
+    description: str | None
+    category: str
+    start: datetime | date
+    end: datetime | date | None
+    all_day: bool
+    venue: str | None
+    address: str | None
+    lat: float | None
+    lon: float | None
+    distance_km: float | None
+    url: str | None
+    image_url: str | None
+    source: str
+    event_id: int | None
+
+
+class SearchCenter(BaseModel):
+    lat: float
+    lon: float
+    label: str
+
+
+class ActivitySearchResult(BaseModel):
+    center: SearchCenter
+    results: list[ActivityOut]
+    total_in_db: int
+
+
+class AddToCalendar(BaseModel):
+    calendar_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
+
+
+class GeocodeIn(BaseModel):
+    address: str = Field(min_length=3, max_length=200)

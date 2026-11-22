@@ -1,5 +1,6 @@
 <script lang="ts">
   import PinPad from '../components/PinPad.svelte';
+  import ActivitiesSettings from '../components/settings/ActivitiesSettings.svelte';
   import AccountsSettings from '../components/settings/AccountsSettings.svelte';
   import CalendarsSettings from '../components/settings/CalendarsSettings.svelte';
   import GeneralSettings from '../components/settings/GeneralSettings.svelte';
@@ -85,6 +86,9 @@
 
     <h2>Kalender</h2>
     <CalendarsSettings />
+
+    <h2>Wohnort & Freizeitaktivitäten</h2>
+    <ActivitiesSettings />
 
     <h2>Allgemein</h2>
     <GeneralSettings />

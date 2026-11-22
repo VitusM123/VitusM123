@@ -86,3 +86,14 @@ describe('rrule', () => {
     expect(parseRrule('FREQ=MONTHLY;BYDAY=2TU;COUNT=3').preset).toBe('custom');
   });
 });
+
+import { rangeFor } from '../activities';
+
+describe('activities', () => {
+  it('weekend range', () => {
+    expect(rangeFor('weekend', new Date(2026, 10, 25))).toEqual({ from: '2026-11-28', to: '2026-11-29' }); // Mi
+    expect(rangeFor('weekend', new Date(2026, 10, 28))).toEqual({ from: '2026-11-28', to: '2026-11-29' }); // Sa
+    expect(rangeFor('weekend', new Date(2026, 10, 29))).toEqual({ from: '2026-11-29', to: '2026-11-29' }); // So
+    expect(rangeFor('week', new Date(2026, 10, 25))).toEqual({ from: '2026-11-25', to: '2026-12-01' });
+  });
+});
