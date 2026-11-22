@@ -84,4 +84,7 @@ def create_app(
 def app_factory() -> FastAPI:
     """Einstiegspunkt für uvicorn: ``uvicorn --factory app.main:app_factory``."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+    # Planer- und Migrationsmeldungen nur bei Problemen (sonst jede Minute eine Zeile)
+    for noisy in ("apscheduler", "alembic"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     return create_app()

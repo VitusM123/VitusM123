@@ -213,6 +213,8 @@ class ActivityService:
 
     async def _refresh_source(self, session: Session, http: httpx.AsyncClient, source: ActivitySource,
                               window: FetchWindow, budget: list[int]) -> RefreshResult:
+        if source.config.get("demo"):          # Beispieldaten (app.tools.demo) nicht abrufen
+            return RefreshResult(source.id, source.name, source.last_count, None)
         try:
             adapter = SOURCES[source.type.value](self._runtime_config(source))
             candidates = await adapter.fetch(http, window)

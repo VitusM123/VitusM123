@@ -195,3 +195,13 @@ def test_search_center_resolution(aclient, fake, settings):
     before = sum(1 for q in fake.requests if q.url.host == "nominatim.openstreetmap.org")
     aclient.post("/api/activities/geocode", json={"address": "marienplatz  münchen"})
     assert sum(1 for q in fake.requests if q.url.host == "nominatim.openstreetmap.org") == before
+
+
+def test_demo_source_is_not_fetched(aclient, fake):
+    with Session(aclient.app.state.engine) as s:
+        s.add(ActivitySource(type="ical", name="Demo", config={"demo": True, "url": "https://example.invalid/x.ics"},
+                             last_count=10))
+        s.commit()
+    result = aclient.post("/api/activities/refresh").json()
+    assert result == [{"source_id": 1, "name": "Demo", "count": 10, "error": None}]
+    assert not any(q.url.host == "example.invalid" for q in fake.requests)

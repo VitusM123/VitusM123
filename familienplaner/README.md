@@ -21,6 +21,15 @@ Familienkalender für Raspberry Pi mit Touch-Display (10–12") oder E-Ink-Anzei
 | `docs/` | Architektur, [Google-Einrichtung](docs/GOOGLE_SETUP.md), [iCloud-Einrichtung](docs/ICLOUD_SETUP.md),
 [Veranstaltungsquellen](docs/ACTIVITIES_SETUP.md) |
 
+## Schnellstart (Linux, WSL unter Windows, Raspberry Pi)
+
+```bash
+git clone https://github.com/VitusM123/VitusM123.git && cd VitusM123/familienplaner
+scripts/dev.sh --demo        # einrichten, Beispieldaten anlegen, starten → http://localhost:8000
+```
+
+Ausführlich für Windows: [docs/WSL_TEST.md](docs/WSL_TEST.md). Weitere Optionen: `scripts/dev.sh --help`.
+
 ## Entwicklung
 
 Voraussetzungen: Python ≥ 3.11, Node.js ≥ 20.
