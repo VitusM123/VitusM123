@@ -39,6 +39,8 @@ class AppState {
   /** Kiosk-Modus (Gerät am Pi): Bildschirmtastatur, Rückkehr zu „Heute“ bei Inaktivität. */
   kiosk = $state(false);
   toast = $state<string | null>(null);
+  /** Nach dem Verbinden eines Kontos: Dialog „Wem gehören diese Kalender?“ für dieses Konto anzeigen */
+  assignAccountId = $state<number | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
 
   async init(): Promise<void> {
@@ -155,6 +157,9 @@ class AppState {
     const ok = params.get('google');
     const err = params.get('google_error');
     if (!ok && !err) return;
+    const account = Number(params.get('account'));
+    if (ok && account) this.assignAccountId = account;
+    params.delete('account');
     this.notify(ok ? 'Google verbunden – neue Termine landen künftig in Google (änderbar unter „Kalender“)'
       : `Google-Anmeldung fehlgeschlagen: ${err}`);
     params.delete('google');

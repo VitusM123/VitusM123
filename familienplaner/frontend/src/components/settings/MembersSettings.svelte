@@ -11,6 +11,9 @@
   let color = $state(EXTRA_COLORS[0]);
   let avatar = $state('');
   let confirmDelete = $state<number | null>(null);
+  let calendarIds = $state<number[]>([]);
+
+  const calendarsOf = (memberId: number) => app.calendars.filter((c) => c.member_ids.includes(memberId));
 
   const palette = $derived([...new Set([...(app.theme?.memberPalette ?? []), ...EXTRA_COLORS])].filter((c) => /^#[0-9a-f]{6}$/i.test(c)));
 
@@ -19,6 +22,7 @@
     name = m?.name ?? '';
     color = m?.color ?? palette[app.members.length % palette.length];
     avatar = m?.avatar ?? '';
+    calendarIds = m ? calendarsOf(m.id).map((c) => c.id) : [];
     confirmDelete = null;
   }
 
@@ -27,8 +31,12 @@
     if (!name.trim()) return app.notify('Bitte einen Namen eingeben');
     try {
       const data = { name: name.trim(), color, avatar: avatar || null };
-      if (editing === 'new') await api.createMember(data);
-      else if (editing !== null) await api.updateMember(editing, data);
+      const member = editing === 'new' ? await api.createMember(data) : await api.updateMember(editing as number, data);
+      const before = calendarsOf(member.id).map((c) => c.id).sort().join();
+      if ([...calendarIds].sort().join() !== before) {
+        await api.setMemberCalendars(member.id, calendarIds);
+        app.calendars = await api.calendars();
+      }
       app.members = await api.members();
       editing = null;
     } catch (err) {
@@ -59,7 +67,16 @@
         {@render form()}
       {:else}
         <span class="avatar" style:background={m.color}>{m.avatar || m.name.slice(0, 1)}</span>
-        <span class="name">{m.name}</span>
+        <span class="name">
+          {m.name}
+          <span class="cals">
+            {#each calendarsOf(m.id) as c (c.id)}
+              <span class="cal"><span class="dot" style:background={c.color ?? 'var(--color-accent)'}></span>{c.name}</span>
+            {:else}
+              <span class="none">keine eigenen Kalender</span>
+            {/each}
+          </span>
+        </span>
         <button class="small" onclick={() => move(i, -1)} disabled={i === 0} aria-label="Nach oben">▲</button>
         <button class="small" onclick={() => move(i, 1)} disabled={i === app.members.length - 1} aria-label="Nach unten">▼</button>
         <button class="small" onclick={() => start(m)}>Bearbeiten</button>
@@ -90,6 +107,19 @@
           aria-checked={a === avatar}>{a || name.slice(0, 1) || '–'}</button>
       {/each}
     </div>
+    {#if app.calendars.length}
+      <div class="calpick" role="group" aria-label="Kalender dieser Person">
+        <span class="hint">Kalender:</span>
+        {#each app.calendars as c (c.id)}
+          <button type="button" class="calchip" class:on={calendarIds.includes(c.id)}
+            aria-pressed={calendarIds.includes(c.id)}
+            onclick={() => (calendarIds = calendarIds.includes(c.id)
+              ? calendarIds.filter((x) => x !== c.id) : [...calendarIds, c.id])}>
+            <span class="dot" style:background={c.color ?? 'var(--color-accent)'}></span>{c.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
     <div class="row">
       {#if editing !== 'new' && editing !== null}
         {#if confirmDelete === editing}
@@ -118,7 +148,24 @@
     border-radius: var(--radius);
   }
   .avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 1.2rem; }
-  .name { flex: 1; font-weight: 600; }
+  .name { flex: 1; font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
+  .cals { display: flex; flex-wrap: wrap; gap: 4px 10px; font-weight: 400; font-size: 0.8rem; color: var(--color-text-muted); }
+  .cal { display: inline-flex; align-items: center; gap: 4px; }
+  .none { font-style: italic; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .calpick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .hint { color: var(--color-text-muted); margin-right: 4px; }
+  .calchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+  .calchip.on { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface)); font-weight: 600; }
   .form { display: flex; flex-direction: column; gap: 10px; width: 100%; }
   input {
     font: inherit;

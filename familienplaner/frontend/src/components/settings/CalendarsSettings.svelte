@@ -62,16 +62,18 @@
               aria-label="Farbe {c}"></button>
           {/each}
         </div>
-        <label class="member">
-          gehört zu
-          <select
-            value={cal.default_member_id ?? ''}
-            onchange={(e) => update(cal, { default_member_id: e.currentTarget.value ? Number(e.currentTarget.value) : null })}
-          >
-            <option value="">– niemand –</option>
-            {#each app.members as m (m.id)}<option value={m.id}>{m.name}</option>{/each}
-          </select>
-        </label>
+        {#if app.members.length}
+          <div class="member" role="group" aria-label="gehört zu">
+            gehört zu
+            {#each app.members as m (m.id)}
+              <button class="mchip" style:--c={m.color} class:on={cal.member_ids.includes(m.id)}
+                aria-pressed={cal.member_ids.includes(m.id)}
+                onclick={() => update(cal, { member_ids: cal.member_ids.includes(m.id)
+                  ? cal.member_ids.filter((x) => x !== m.id) : [...cal.member_ids, m.id] })}
+              >{m.avatar || m.name.slice(0, 1)} {m.name}</button>
+            {/each}
+          </div>
+        {/if}
         {#if cal.provider === 'local' && app.calendars.filter((c) => c.provider === 'local').length > 1}
           {#if confirmDelete === cal.id}
             <button class="small danger" onclick={() => remove(cal.id)}>Mit allen Terminen löschen</button>
@@ -120,8 +122,17 @@
   .badge.strong { color: var(--color-accent); border-color: var(--color-accent); }
   .sw { width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; }
   .sw.on { border-color: var(--color-text); }
-  .member { color: var(--color-text-muted); margin-left: auto; }
-  select, input[type='text'] {
+  .member { color: var(--color-text-muted); }
+  .mchip {
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 20px;
+    border: 2px solid var(--c);
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+  .mchip.on { background: var(--c); color: #fff; font-weight: 600; }
+  input[type='text'] {
     font: inherit;
     color: var(--color-text);
     background: var(--color-bg);

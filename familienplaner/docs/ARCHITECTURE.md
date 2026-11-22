@@ -199,7 +199,8 @@ erDiagram
     Event ||--o{ EventMember : ""
     Account ||--o{ Calendar : "enthält"
     Calendar ||--o{ Event : "enthält"
-    FamilyMember ||--o{ Calendar : "Standard-Besitzer"
+    FamilyMember ||--o{ CalendarMember : "besitzt"
+    Calendar ||--o{ CalendarMember : ""
     ActivitySource ||--o{ Activity : "liefert"
     Activity |o--o| Event : "übernommen als"
 
@@ -225,7 +226,6 @@ erDiagram
         string color
         bool read_only
         bool visible
-        int default_member_id FK
         string sync_token "syncToken / CTag"
     }
     Event {
@@ -280,7 +280,8 @@ Außerdem einfache Key-Value-Tabellen für `Settings` (Theme, Heimatort, Umkreis
 
 **Zuordnung Termine → Familienmitglieder** (für die Tabellenansicht):
 1. Explizit über `EventMember` (in der UI gesetzt).
-2. Fallback: `Calendar.default_member_id` (z. B. „Kalender *Lena Schule* gehört zu Lena“).
+2. Fallback: Personen des Kalenders über `CalendarMember` – auch mehrere (z. B. „Kalender *Kinder* gehört Lena
+   und Tim“). Wird direkt nach dem Verbinden eines Kontos abgefragt und ist pro Kalender oder pro Person änderbar.
 3. Optional: Regeln (z. B. Teilnehmer-E-Mail → Person). Später erweiterbar.
 
 ---

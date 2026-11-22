@@ -233,7 +233,7 @@ def test_callback_redirect_and_errors(gclient, fake):
     fake.authorize("code-xyz", q["code_challenge"][0])
     r = gclient.get("/api/accounts/google/callback", params={"state": q["state"][0], "code": "code-xyz"},
                     follow_redirects=False)
-    assert r.status_code == 307 and r.headers["location"] == "/?google=connected#/settings"
+    assert r.status_code == 307 and r.headers["location"].startswith("/?google=connected&account=")
     # Erneut mit demselben state → abgelaufen/unbekannt
     r = gclient.get("/api/accounts/google/callback", params={"state": q["state"][0], "code": "code-xyz"},
                     follow_redirects=False)

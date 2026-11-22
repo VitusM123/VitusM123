@@ -64,9 +64,10 @@
   const complete = (e: SubmitEvent) => {
     e.preventDefault();
     return guard(async () => {
-      await api.googleComplete(pasted.trim());
+      const account = await api.googleComplete(pasted.trim());
       pasted = '';
       pasteMode = false;
+      app.assignAccountId = account.id;
       app.notify('Google verbunden – neue Termine landen künftig in Google (änderbar unter „Kalender“)');
       await load();
     });
@@ -84,7 +85,8 @@
     busy = true;
     icloudError = null;
     try {
-      await api.icloudConnect(appleId, appPassword, advanced ? serverUrl : null);
+      const account = await api.icloudConnect(appleId, appPassword, advanced ? serverUrl : null);
+      app.assignAccountId = account.id;
       icloudForm = false;
       appPassword = '';
       app.notify('iCloud verbunden – neue Termine landen künftig in iCloud (änderbar unter „Kalender“)');

@@ -74,8 +74,13 @@ class Calendar(SQLModel, table=True):
     read_only: bool = False
     visible: bool = True
     is_default: bool = False           # Ziel für neue Termine
-    default_member_id: int | None = Field(default=None, foreign_key="familymember.id")
     sync_token: str | None = None
+
+
+class CalendarMember(SQLModel, table=True):
+    """Personen, denen ein Kalender gehört. Termine ohne eigene Personenauswahl gelten für sie."""
+    calendar_id: int = Field(foreign_key="calendar.id", primary_key=True)
+    member_id: int = Field(foreign_key="familymember.id", primary_key=True)
 
 
 class Event(SQLModel, table=True):

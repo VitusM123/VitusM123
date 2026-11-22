@@ -201,3 +201,20 @@ def test_explicit_default_is_kept(iclient, fake):
     iclient.post("/api/sync")
     defaults = [c["name"] for c in iclient.get("/api/calendars").json() if c["is_default"]]
     assert defaults == [local["name"]]
+
+
+def test_calendars_available_right_after_connect(iclient, fake):
+    """Für die Frage „Wem gehören diese Kalender?“ sind die Kalender sofort da – Termine folgen im Hintergrund."""
+    acc = iclient.post("/api/accounts/icloud", json={"apple_id": "anna@icloud.com",
+                                                     "app_password": "abcd-efgh-ijkl-mnop"}).json()
+    cals = [c for c in iclient.get("/api/calendars").json() if c["account_id"] == acc["id"]]
+    assert {c["name"] for c in cals} == {"Zuhause", "Arbeit (geteilt)"}
+    assert events(iclient) == []                         # Termine noch nicht geladen
+    zuhause = next(c for c in cals if c["name"] == "Zuhause")
+    iclient.put(f"/api/calendars/{zuhause['id']}", json={"member_ids": [1, 2]})
+    iclient.post("/api/sync")
+    chor = next(e for e in events(iclient) if e["title"] == "Chor")
+    assert chor["member_ids"] == [1, 2]
+    assert next(e for e in events(iclient) if e["title"] == "Elternsprechtag")["member_ids"] == [2]   # eigene
+    # Trennen entfernt auch die Zuordnungen
+    assert iclient.delete(f"/api/accounts/{acc['id']}").status_code == 204

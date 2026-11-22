@@ -1,7 +1,7 @@
 """Familienmitglieder (CRUD, Reihenfolge)."""
 from sqlmodel import Session, func, select
 
-from app.domain.models import Calendar, EventMember, FamilyMember
+from app.domain.models import CalendarMember, EventMember, FamilyMember
 from app.schemas import MemberCreate, MemberUpdate
 from app.services.errors import NotFoundError
 
@@ -55,9 +55,8 @@ class MemberService:
         member = self.get(member_id)
         for link in self.session.exec(select(EventMember).where(EventMember.member_id == member_id)):
             self.session.delete(link)
-        for cal in self.session.exec(select(Calendar).where(Calendar.default_member_id == member_id)):
-            cal.default_member_id = None
-            self.session.add(cal)
+        for link in self.session.exec(select(CalendarMember).where(CalendarMember.member_id == member_id)):
+            self.session.delete(link)
         self.session.delete(member)
         self.session.commit()
 

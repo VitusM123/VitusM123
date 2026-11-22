@@ -20,7 +20,8 @@ export interface CalendarInfo {
   read_only: boolean;
   visible: boolean;
   is_default: boolean;
-  default_member_id: number | null;
+  /** Personen, denen der Kalender gehört (gilt für Termine ohne eigene Personenauswahl) */
+  member_ids: number[];
 }
 
 /** Ein konkretes Vorkommen. Ganztägig: start/end = "YYYY-MM-DD" (end exklusiv), sonst ISO-UTC. */

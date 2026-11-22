@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import CalendarAssignDialog from './components/CalendarAssignDialog.svelte';
   import EventDialog from './components/EventDialog.svelte';
   import Header from './components/Header.svelte';
   import OnScreenKeyboard from './components/OnScreenKeyboard.svelte';
@@ -64,6 +65,7 @@
     <TabBar />
   </div>
   <EventDialog />
+  <CalendarAssignDialog />
   <Toast />
   {#if app.kiosk}<OnScreenKeyboard />{/if}
   <ScreenOff />

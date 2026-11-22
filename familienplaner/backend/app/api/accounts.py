@@ -9,7 +9,7 @@ from sqlmodel import Session, func, select
 from app.config import Settings
 from app.core.db import get_session
 from app.core.deps import get_settings, require_admin
-from app.domain.models import Account, Calendar, Event, EventMember, ProviderType
+from app.domain.models import Account, Calendar, CalendarMember, Event, EventMember, ProviderType
 from app.providers.calendar.base import ProviderError
 from app.schemas import AccountOut
 from app.services import google_service, icloud_service
@@ -83,12 +83,23 @@ def google_start(request: Request, session: Session = Depends(get_session),
     return google_service.start_auth(session, settings, request.app.state.secrets, request.app.state.google_pending)
 
 
+async def _after_connect(request: Request, session: Session, account: Account) -> None:
+    """Kalenderliste sofort laden (für die Frage „Wem gehören diese Kalender?“), Termine im Hintergrund."""
+    try:
+        await request.app.state.sync.sync_calendar_list(account.id)
+    except ProviderError:
+        pass   # Fehler steht am Konto; der reguläre Sync versucht es erneut
+    session.expire_all()
+    request.app.state.sync.request_sync(0.1)
+    await request.app.state.bus.publish("calendars.changed", {})
+
+
 async def _complete(request: Request, session: Session, settings: Settings, url: str,
                     state: str | None = None) -> Account:
     async with request.app.state.sync.http_client() as http:
         account = await google_service.complete_auth(
             session, settings, request.app.state.secrets, request.app.state.google_pending, http, url, state)
-    request.app.state.sync.request_sync(0.1)
+    await _after_connect(request, session, account)
     await request.app.state.bus.publish("calendars.changed", {})
     return account
 
@@ -113,10 +124,11 @@ async def google_callback(request: Request, state: str | None = None, code: str 
     if error or not code:
         return RedirectResponse(f"/?google_error={quote(error or 'abgebrochen')}#/settings")
     try:
-        await _complete(request, session, settings, f"?code={quote(code)}&state={quote(state or '')}", state)
+        account = await _complete(request, session, settings,
+                                  f"?code={quote(code)}&state={quote(state or '')}", state)
     except (ProviderError, ValidationError) as exc:
         return RedirectResponse(f"/?google_error={quote(str(exc))}#/settings")
-    return RedirectResponse("/?google=connected#/settings")
+    return RedirectResponse(f"/?google=connected&account={account.id}#/settings")
 
 
 # --- iCloud ---------------------------------------------------------------------------------
@@ -131,8 +143,7 @@ async def icloud_connect(body: ICloudIn, request: Request, session: Session = De
                                                    body.apple_id, body.app_password, body.server_url)
     except ProviderError as exc:
         raise ValidationError(str(exc)) from exc
-    request.app.state.sync.request_sync(0.1)
-    await request.app.state.bus.publish("calendars.changed", {})
+    await _after_connect(request, session, account)
     return _account_out(session, account)
 
 
@@ -168,6 +179,9 @@ async def delete_account(account_id: int, request: Request, session: Session = D
                 for ev in session.exec(select(Event).where(Event.id.in_(event_ids), cond)):
                     session.delete(ev)
                 session.flush()
+        for link in session.exec(select(CalendarMember).where(CalendarMember.calendar_id.in_(cal_ids))):
+            session.delete(link)
+        session.flush()
         for cal in session.exec(select(Calendar).where(Calendar.id.in_(cal_ids))):
             session.delete(cal)
         session.flush()   # Kalender vor dem Konto löschen (Fremdschlüssel)

@@ -13,7 +13,7 @@ from sqlmodel import Session, select
 
 from app.config import Settings
 from app.core.timeutil import UTC, date_to_utc, ensure_aware, local_day_bounds, utc_to_date, utcnow
-from app.domain.models import Account, Calendar, Event, EventMember, FamilyMember, ProviderType
+from app.domain.models import Account, Calendar, CalendarMember, Event, EventMember, FamilyMember, ProviderType
 from app.schemas import (
     CalendarCreate,
     CalendarOut,
@@ -57,18 +57,60 @@ class CalendarService:
 
     # --- Kalender ---------------------------------------------------------------------------
 
-    def _calendar_out(self, cal: Calendar, provider: ProviderType) -> CalendarOut:
+    def _calendar_out(self, cal: Calendar, provider: ProviderType,
+                      members: list[int] | None = None) -> CalendarOut:
+        if members is None:
+            members = self.calendar_members([cal.id]).get(cal.id, [])
         return CalendarOut(
             id=cal.id, account_id=cal.account_id, provider=provider.value, name=cal.name, color=cal.color,
-            read_only=cal.read_only, visible=cal.visible, is_default=cal.is_default,
-            default_member_id=cal.default_member_id,
+            read_only=cal.read_only, visible=cal.visible, is_default=cal.is_default, member_ids=members,
         )
 
     def list_calendars(self) -> list[CalendarOut]:
         rows = self.session.exec(
             select(Calendar, Account.provider).join(Account).order_by(Account.id, Calendar.name)
         ).all()
-        return [self._calendar_out(cal, provider) for cal, provider in rows]
+        members = self.calendar_members([cal.id for cal, _ in rows])
+        return [self._calendar_out(cal, provider, members.get(cal.id, [])) for cal, provider in rows]
+
+    def calendar_members(self, calendar_ids: list[int]) -> dict[int, list[int]]:
+        """Kalender → zugeordnete Personen (in Reihenfolge der Familienmitglieder)."""
+        result: dict[int, list[int]] = defaultdict(list)
+        if not calendar_ids:
+            return result
+        rows = self.session.exec(
+            select(CalendarMember.calendar_id, CalendarMember.member_id)
+            .join(FamilyMember, FamilyMember.id == CalendarMember.member_id)
+            .where(CalendarMember.calendar_id.in_(calendar_ids))
+            .order_by(FamilyMember.sort_order, FamilyMember.id)
+        )
+        for calendar_id, member_id in rows:
+            result[calendar_id].append(member_id)
+        return result
+
+    def set_calendar_members(self, calendar_id: int, member_ids: list[int]) -> None:
+        MemberService(self.session).ensure_exist(member_ids)
+        for link in self.session.exec(select(CalendarMember).where(CalendarMember.calendar_id == calendar_id)):
+            self.session.delete(link)
+        self.session.flush()
+        for member_id in dict.fromkeys(member_ids):
+            self.session.add(CalendarMember(calendar_id=calendar_id, member_id=member_id))
+
+    def set_member_calendars(self, member_id: int, calendar_ids: list[int]) -> list[int]:
+        """Übersicht nach Person: diese Person genau den angegebenen Kalendern zuordnen."""
+        MemberService(self.session).get(member_id)
+        for cid in calendar_ids:
+            self.get_calendar(cid)
+        wanted = set(calendar_ids)
+        for link in self.session.exec(select(CalendarMember).where(CalendarMember.member_id == member_id)):
+            if link.calendar_id not in wanted:
+                self.session.delete(link)
+            wanted.discard(link.calendar_id)
+        for cid in wanted:
+            self.session.add(CalendarMember(calendar_id=cid, member_id=member_id))
+        self.session.commit()
+        return sorted(self.session.exec(select(CalendarMember.calendar_id)
+                                        .where(CalendarMember.member_id == member_id)))
 
     def get_calendar(self, calendar_id: int) -> Calendar:
         cal = self.session.get(Calendar, calendar_id)
@@ -98,13 +140,11 @@ class CalendarService:
         return account
 
     def create_local_calendar(self, data: CalendarCreate) -> CalendarOut:
-        if data.default_member_id is not None:
-            MemberService(self.session).ensure_exist([data.default_member_id])
-        cal = Calendar(
-            account_id=self._local_account().id, name=data.name.strip(), color=data.color,
-            default_member_id=data.default_member_id,
-        )
+        MemberService(self.session).ensure_exist(data.member_ids)
+        cal = Calendar(account_id=self._local_account().id, name=data.name.strip(), color=data.color)
         self.session.add(cal)
+        self.session.flush()
+        self.set_calendar_members(cal.id, data.member_ids)
         self.session.commit()
         self.session.refresh(cal)
         return self._calendar_out(cal, ProviderType.LOCAL)
@@ -112,8 +152,9 @@ class CalendarService:
     def update_calendar(self, calendar_id: int, data: CalendarUpdate) -> CalendarOut:
         cal = self.get_calendar(calendar_id)
         changes = data.model_dump(exclude_unset=True)
-        if changes.get("default_member_id") is not None:
-            MemberService(self.session).ensure_exist([changes["default_member_id"]])
+        member_ids = changes.pop("member_ids", None)
+        if member_ids is not None:
+            self.set_calendar_members(cal.id, member_ids)
         if changes.get("is_default"):
             if cal.read_only:
                 raise ValidationError("Ein schreibgeschützter Kalender kann nicht Standard sein")
@@ -141,6 +182,8 @@ class CalendarService:
         events = self.session.exec(select(Event).where(Event.calendar_id == calendar_id)).all()
         self._hard_delete_events(events)
         was_default = cal.is_default
+        self.set_calendar_members(cal.id, [])
+        self.session.flush()
         self.session.delete(cal)
         self.session.flush()
         if was_default:
@@ -205,6 +248,7 @@ class CalendarService:
             ))
 
         members_by_event = self._members_for([ev.id for ev, _ in rows])
+        members_by_calendar = self.calendar_members(list({cal.id for _, cal in rows}))
         result: list[EventOccurrence] = []
         for ev, cal in rows:
             if ev.recurrence_master_id in deleted_masters:
@@ -217,7 +261,8 @@ class CalendarService:
             )
             if not spans:
                 continue
-            resolved = members_by_event.get(ev.id) or ([cal.default_member_id] if cal.default_member_id else [])
+            # Personen des Termins; ohne eigene Auswahl gelten die Personen des Kalenders
+            resolved = members_by_event.get(ev.id) or members_by_calendar.get(cal.id, [])
             if member_ids and not set(resolved) & set(member_ids):
                 continue
             for occ_start, occ_end in spans:
@@ -228,9 +273,7 @@ class CalendarService:
     def get_event(self, event_id: int) -> EventOccurrence:
         ev = self._get_event(event_id)
         cal = self.get_calendar(ev.calendar_id)
-        resolved = self._members_for([ev.id]).get(ev.id) or (
-            [cal.default_member_id] if cal.default_member_id else []
-        )
+        resolved = self._members_for([ev.id]).get(ev.id) or self.calendar_members([cal.id]).get(cal.id, [])
         return self._occurrence(ev, cal, ev.start, ev.end, resolved, cal.read_only)
 
     def family_table(self, start_date: date, end_date: date) -> FamilyTable:

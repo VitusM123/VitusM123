@@ -52,7 +52,7 @@ export const api = {
   // Kalender & Mitglieder
   calendars: () => request<CalendarInfo[]>('GET', '/api/calendars'),
   updateCalendar: (id: number, data: Partial<CalendarInfo>) => request<CalendarInfo>('PUT', `/api/calendars/${id}`, data),
-  createCalendar: (data: { name: string; color?: string | null; default_member_id?: number | null }) =>
+  createCalendar: (data: { name: string; color?: string | null; member_ids?: number[] }) =>
     request<CalendarInfo>('POST', '/api/calendars', data),
   deleteCalendar: (id: number) => request<void>('DELETE', `/api/calendars/${id}`),
   members: () => request<FamilyMember[]>('GET', '/api/members'),
@@ -61,6 +61,8 @@ export const api = {
   updateMember: (id: number, data: Partial<FamilyMember>) => request<FamilyMember>('PUT', `/api/members/${id}`, data),
   deleteMember: (id: number) => request<void>('DELETE', `/api/members/${id}`),
   reorderMembers: (ids: number[]) => request<FamilyMember[]>('PUT', '/api/members/order', ids),
+  setMemberCalendars: (memberId: number, calendar_ids: number[]) =>
+    request<{ calendar_ids: number[] }>('PUT', `/api/members/${memberId}/calendars`, { calendar_ids }),
 
   // Einstellungen & Themes
   themes: () => request<Theme[]>('GET', '/api/themes'),

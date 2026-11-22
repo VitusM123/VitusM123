@@ -113,7 +113,7 @@ def test_all_day_series_occurrence_delete(client):
 
 def test_calendar_default_member_and_hidden(client, members):
     cal = client.post("/api/calendars", json={"name": "Schule Lena", "color": "#7FB069",
-                                              "default_member_id": members[2]}).json()
+                                              "member_ids": [members[2]]}).json()
     client.post("/api/events", json={"title": "Elternabend", "calendar_id": cal["id"],
                                      "start": "2026-11-26T19:00:00"})
     occ = _week(client)
@@ -151,3 +151,44 @@ def test_window_limits(client):
 def test_last_local_calendar_cannot_be_deleted(client):
     cal_id = client.get("/api/calendars").json()[0]["id"]
     assert client.delete(f"/api/calendars/{cal_id}").status_code == 409
+
+
+def test_calendar_with_several_members(client, members):
+    anna, ben, lena = members
+    kids = client.post("/api/calendars", json={"name": "Kinder", "member_ids": [lena, ben]}).json()
+    assert kids["member_ids"] == [ben, lena]                       # Reihenfolge der Familienmitglieder
+    client.post("/api/events", json={"title": "Zirkus", "calendar_id": kids["id"], "start": "2026-11-25T15:00:00"})
+    client.post("/api/events", json={"title": "Nur Lena", "calendar_id": kids["id"],
+                                     "start": "2026-11-26T15:00:00", "member_ids": [lena]})
+    occ = {o["title"]: o for o in _week(client)}
+    assert occ["Zirkus"]["member_ids"] == [ben, lena]              # Personen des Kalenders
+    assert occ["Nur Lena"]["member_ids"] == [lena]                 # eigene Auswahl hat Vorrang
+    assert [o["title"] for o in _week(client, members=[ben])] == ["Zirkus"]
+    table = client.get("/api/family-table", params={"start": "2026-11-23", "days": 7}).json()
+    day = next(d for d in table["days"] if d["date"] == "2026-11-25")
+    assert day["cells"][str(ben)][0]["title"] == "Zirkus" and day["cells"][str(lena)][0]["title"] == "Zirkus"
+    assert day["cells"][str(anna)] == [] and day["unassigned"] == []
+
+    # Zuordnung ändern und entfernen
+    r = client.put(f"/api/calendars/{kids['id']}", json={"member_ids": [anna]})
+    assert r.json()["member_ids"] == [anna]
+    assert client.put(f"/api/calendars/{kids['id']}", json={"member_ids": [999]}).status_code == 404
+
+
+def test_member_calendar_overview(client, members):
+    anna, ben, _ = members
+    fam = client.get("/api/calendars").json()[0]
+    school = client.post("/api/calendars", json={"name": "Schule"}).json()
+    r = client.put(f"/api/members/{ben}/calendars", json={"calendar_ids": [fam["id"], school["id"]]})
+    assert r.status_code == 200 and r.json()["calendar_ids"] == sorted([fam["id"], school["id"]])
+    client.put(f"/api/members/{anna}/calendars", json={"calendar_ids": [fam["id"]]})
+    cals = {c["name"]: c for c in client.get("/api/calendars").json()}
+    assert cals["Familie"]["member_ids"] == [anna, ben] and cals["Schule"]["member_ids"] == [ben]
+    client.put(f"/api/members/{ben}/calendars", json={"calendar_ids": [school["id"]]})
+    assert client.get("/api/calendars").json()[0]["member_ids"] == [anna]
+    assert client.put(f"/api/members/{ben}/calendars", json={"calendar_ids": [999]}).status_code == 404
+    # Person löschen entfernt ihre Kalenderzuordnungen
+    client.delete(f"/api/members/{ben}")
+    assert {c["name"]: c["member_ids"] for c in client.get("/api/calendars").json()}["Schule"] == []
+    # Lokalen Kalender mit Zuordnungen löschen
+    assert client.delete(f"/api/calendars/{school['id']}").status_code == 204

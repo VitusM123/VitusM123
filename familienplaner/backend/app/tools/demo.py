@@ -44,7 +44,7 @@ def main() -> None:
                                            ("Lena", "#F3A712", "👧"), ("Tim", "#669BBC", "👦")]}
         cal = CalendarService(session, settings)
         school = cal.create_local_calendar(CalendarCreate(name="Schule", color="#7FB069",
-                                                          default_member_id=ids["Lena"]))
+                                                          member_ids=[ids["Lena"]]))
 
         today = datetime.now(tz).date()
         monday = today - timedelta(days=today.weekday())

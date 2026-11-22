@@ -26,7 +26,7 @@ from app.config import Settings
 from app.core.events import EventBus
 from app.core.security import SecretBox
 from app.core.timeutil import UTC, utcnow
-from app.domain.models import Account, Calendar, Event, EventMember, FamilyMember, ProviderType
+from app.domain.models import Account, Calendar, CalendarMember, Event, EventMember, FamilyMember, ProviderType
 from app.providers.calendar.base import (
     AuthError,
     CalendarProvider,
@@ -145,6 +145,14 @@ class SyncService:
 
     async def sync_account(self, account_id: int) -> SyncStats | None:
         """Synchronisiert ein Konto. ``None``, wenn für den Anbieter (noch) kein Provider existiert."""
+        return await self._with_provider(account_id, self._sync_account, mark_synced=True)
+
+    async def sync_calendar_list(self, account_id: int) -> None:
+        """Nur die Kalenderliste abgleichen (schnell) – z. B. direkt nach dem Verbinden, damit die
+        Zuordnung zu Personen abgefragt werden kann, bevor alle Termine geladen sind."""
+        await self._with_provider(account_id, self._sync_calendar_list, mark_synced=False)
+
+    async def _with_provider(self, account_id: int, fn, mark_synced: bool):
         if self.provider_factory is None:
             return None
         async with self.http_client() as http:
@@ -156,12 +164,13 @@ class SyncService:
                     provider = self.provider_factory(session, account, http)
                     if provider is None:
                         return None
-                    stats = await self._sync_account(session, account, provider)
-                    account.last_sync = utcnow()
+                    result = await fn(session, account, provider)
+                    if mark_synced:
+                        account.last_sync = utcnow()
                     account.last_error = None
                     session.add(account)
                     session.commit()
-                    return stats
+                    return result
                 except (ProviderError, httpx.HTTPError) as exc:
                     session.rollback()
                     account = session.get(Account, account_id)
@@ -173,6 +182,13 @@ class SyncService:
     # --- Kalenderliste ----------------------------------------------------------------------
 
     async def _sync_account(self, session: Session, account: Account, provider: CalendarProvider) -> SyncStats:
+        await self._sync_calendar_list(session, account, provider)
+        stats = SyncStats()
+        for cal in session.exec(select(Calendar).where(Calendar.account_id == account.id)).all():
+            stats.add(await self._sync_calendar(session, cal, provider))
+        return stats
+
+    async def _sync_calendar_list(self, session: Session, account: Account, provider: CalendarProvider) -> None:
         remote_cals = await provider.list_calendars()
         local = {c.remote_id: c for c in session.exec(select(Calendar).where(Calendar.account_id == account.id))}
         for rc in remote_cals:
@@ -193,11 +209,6 @@ class SyncService:
         if account.last_sync is None:         # erster Abgleich eines neu verbundenen Kontos
             self._adopt_default_calendar(session, account, remote_cals)
         session.commit()
-
-        stats = SyncStats()
-        for cal in session.exec(select(Calendar).where(Calendar.account_id == account.id)).all():
-            stats.add(await self._sync_calendar(session, cal, provider))
-        return stats
 
     def _adopt_default_calendar(self, session: Session, account: Account, remote_cals: list) -> None:
         """Hauptkalender des neuen Kontos wird Standard für neue Termine – aber nur, wenn bisher ein
@@ -225,6 +236,9 @@ class SyncService:
     def _delete_calendar(self, session: Session, cal: Calendar) -> None:
         events = session.exec(select(Event).where(Event.calendar_id == cal.id)).all()
         self._hard_delete(session, events)
+        for link in session.exec(select(CalendarMember).where(CalendarMember.calendar_id == cal.id)):
+            session.delete(link)
+        session.flush()
         session.delete(cal)
         session.flush()
 

@@ -77,13 +77,14 @@ class CalendarOut(BaseModel):
     read_only: bool
     visible: bool
     is_default: bool
-    default_member_id: int | None
+    # Personen, denen der Kalender gehört (gilt für Termine ohne eigene Personenauswahl)
+    member_ids: list[int]
 
 
 class CalendarCreate(_ColorMixin):
     name: str = Field(min_length=1, max_length=100)
     color: str | None = None
-    default_member_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
 
 
 class CalendarUpdate(_ColorMixin):
@@ -91,7 +92,7 @@ class CalendarUpdate(_ColorMixin):
     color: str | None = None
     visible: bool | None = None
     is_default: bool | None = None
-    default_member_id: int | None = None
+    member_ids: list[int] | None = None
 
 
 class AccountOut(BaseModel):

@@ -21,6 +21,9 @@ Erinnerungslisten werden nicht übernommen. Mit dir geteilte Kalender ohne Schre
 
 ## Wie synchronisiert wird
 
+- **Personen:** Direkt nach dem Verbinden fragt der Planer „Wem gehören diese Kalender?“. Termine aus einem
+  Kalender erscheinen dann in der Familienansicht bei diesen Personen (auch mehreren), außer der Termin hat eine
+  eigene Personenauswahl. Änderbar unter Einstellungen → Kalender oder pro Person unter Familienmitglieder.
 - **Neue Termine:** Nach dem Verbinden wird der Hauptkalender des iCloud-Kontos automatisch **Standard**.
   Neu angelegte Termine (auch aus der Aktivitätensuche) erscheinen dadurch auf allen Geräten. Das gilt nur,
   solange vorher ein lokaler Kalender Standard war. Ändern lässt sich das unter **Einstellungen → Kalender → Als Standard**.
