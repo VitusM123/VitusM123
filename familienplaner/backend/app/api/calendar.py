@@ -20,6 +20,8 @@ router = APIRouter(prefix="/api", tags=["calendar"])
 
 async def _changed(request: Request, event_type: str = "events.changed", **payload) -> None:
     await request.app.state.bus.publish(event_type, payload)
+    if event_type == "events.changed":
+        request.app.state.sync.request_sync()   # Änderungen zügig zu Google/iCloud übertragen
 
 
 # --- Kalender -------------------------------------------------------------------------------

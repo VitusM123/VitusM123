@@ -47,6 +47,23 @@ def test_all_day_uses_date_semantics():
                   window_start=win_start, window_end=win_end, display_tz=BERLIN) == []
 
 
+def test_all_day_series_with_until():
+    # Frontend erzeugt UNTIL als UTC-Zeitpunkt, Google liefert bei Ganztägigem ein Datum
+    start = datetime(2026, 11, 23, tzinfo=UTC)
+    for rule in ("FREQ=WEEKLY;BYDAY=MO;UNTIL=20261214T235959Z", "FREQ=WEEKLY;BYDAY=MO;UNTIL=20261214"):
+        spans = expand(start=start, end=start + timedelta(days=1), rrule=rule, all_day=True, tz_name="Europe/Berlin",
+                       window_start=start, window_end=start + timedelta(days=60), display_tz=BERLIN)
+        assert [s.date().isoformat() for s, _ in spans] == ["2026-11-23", "2026-11-30", "2026-12-07", "2026-12-14"]
+
+
+def test_timed_series_with_date_only_until():
+    start = datetime(2026, 11, 23, 15, tzinfo=UTC)
+    spans = expand(start=start, end=start + timedelta(hours=1), rrule="FREQ=DAILY;UNTIL=20261125", all_day=False,
+                   tz_name="Europe/Berlin", window_start=start, window_end=start + timedelta(days=10),
+                   display_tz=BERLIN)
+    assert len(spans) == 3
+
+
 def test_invalid_rrule_falls_back_to_single():
     start = datetime(2026, 11, 22, 10, tzinfo=UTC)
     spans = expand(start=start, end=start + timedelta(hours=1), rrule="FREQ=NONSENSE", all_day=False,

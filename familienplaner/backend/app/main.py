@@ -2,6 +2,7 @@
 import logging
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,13 +16,20 @@ from app.core.scheduler import create_scheduler
 from app.core.security import LoginThrottle, SecretBox
 from app.services.display_service import DisplayService
 from app.services.errors import DomainError
+from app.services.google_service import PendingAuth, make_provider_factory
 from app.services.sync_service import SyncService
 from app.services.theme_service import ThemeService
 
 log = logging.getLogger("familienplaner")
 
 
-def create_app(config: Settings | None = None, *, start_scheduler: bool = True) -> FastAPI:
+def create_app(
+    config: Settings | None = None,
+    *,
+    start_scheduler: bool = True,
+    http_transport: httpx.AsyncBaseTransport | None = None,
+) -> FastAPI:
+    """``http_transport`` ersetzt in Tests den Netzwerkzugriff (z. B. ``httpx.MockTransport``)."""
     cfg = config or load_settings()
 
     @asynccontextmanager
@@ -43,7 +51,11 @@ def create_app(config: Settings | None = None, *, start_scheduler: bool = True) 
     app.state.bus = EventBus()
     app.state.themes = ThemeService(cfg.custom_themes_dir)
     app.state.display = DisplayService(cfg.display.backlight_path)
-    app.state.sync = SyncService(app.state.engine, app.state.bus)
+    app.state.sync = SyncService(
+        app.state.engine, app.state.bus, cfg, app.state.secrets,
+        provider_factory=make_provider_factory(cfg, app.state.secrets), http_transport=http_transport,
+    )
+    app.state.google_pending = PendingAuth()
     app.state.login_throttle = LoginThrottle()
 
     @app.exception_handler(DomainError)

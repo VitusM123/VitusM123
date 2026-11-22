@@ -41,9 +41,11 @@ sync:
   future_days: 365
 
 google:
-  # Eigener OAuth-Client vom Typ "TV & Limited Input devices"
+  # Eigener OAuth-Client vom Typ "Desktop-App" (Anleitung: docs/GOOGLE_SETUP.md).
+  # Alternativ leer lassen und in der Weboberfläche unter Einstellungen → Verknüpfte Konten eintragen.
   client_id: ""
   client_secret: ""
+  # redirect_uri: http://127.0.0.1:8000/api/accounts/google/callback   # Standard
 
 activities:
   home:

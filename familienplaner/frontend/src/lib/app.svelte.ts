@@ -41,6 +41,7 @@ class AppState {
 
   async init(): Promise<void> {
     this.kiosk = detectKiosk();
+    this.consumeRedirectParams();
     setInterval(() => (this.now = new Date()), 30_000);
     try {
       const [info, settings, theme, themes, members, calendars, display, sync, auth] = await Promise.all([
@@ -141,6 +142,19 @@ class AppState {
     this.toast = message;
     clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => (this.toast = null), 4000);
+  }
+
+  /** Rückmeldung nach der Google-Anmeldung (?google=connected / ?google_error=…) anzeigen. */
+  private consumeRedirectParams(): void {
+    const params = new URLSearchParams(window.location.search);
+    const ok = params.get('google');
+    const err = params.get('google_error');
+    if (!ok && !err) return;
+    this.notify(ok ? 'Google-Konto verbunden – Kalender werden geladen …' : `Google-Anmeldung fehlgeschlagen: ${err}`);
+    params.delete('google');
+    params.delete('google_error');
+    const query = params.toString();
+    history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
   }
 
   async refreshAuth(): Promise<void> {

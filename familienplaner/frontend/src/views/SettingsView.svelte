@@ -1,5 +1,6 @@
 <script lang="ts">
   import PinPad from '../components/PinPad.svelte';
+  import AccountsSettings from '../components/settings/AccountsSettings.svelte';
   import CalendarsSettings from '../components/settings/CalendarsSettings.svelte';
   import GeneralSettings from '../components/settings/GeneralSettings.svelte';
   import MembersSettings from '../components/settings/MembersSettings.svelte';
@@ -78,6 +79,9 @@
   {:else}
     <h2>Familienmitglieder</h2>
     <MembersSettings />
+
+    <h2>Verknüpfte Konten</h2>
+    <AccountsSettings />
 
     <h2>Kalender</h2>
     <CalendarsSettings />

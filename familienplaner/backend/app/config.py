@@ -87,8 +87,11 @@ class SyncSettings(BaseModel):
 
 
 class GoogleSettings(BaseModel):
+    # OAuth-Client vom Typ „Desktop-App“. Alternativ in der Weboberfläche hinterlegen.
     client_id: str = ""
     client_secret: str = ""
+    # Standard: http://127.0.0.1:<port>/api/accounts/google/callback
+    redirect_uri: str | None = None
 
 
 class HomeLocation(BaseModel):

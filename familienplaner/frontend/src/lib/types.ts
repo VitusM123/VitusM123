@@ -114,6 +114,22 @@ export interface SyncStatus {
   accounts_synced: number;
 }
 
+export interface AccountInfo {
+  id: number;
+  provider: 'google' | 'icloud' | 'local';
+  display_name: string;
+  last_sync: string | null;
+  last_error: string | null;
+  calendar_count: number;
+}
+
+export interface GoogleConfig {
+  configured: boolean;
+  source: 'config' | 'settings' | null;
+  client_id: string | null;
+  redirect_uri: string;
+}
+
 export interface AuthStatus {
   pin_set: boolean;
   authenticated: boolean;

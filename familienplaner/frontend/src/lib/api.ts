@@ -1,5 +1,6 @@
 // Typisierter REST-Client für das Backend.
 import type {
+  AccountInfo, GoogleConfig,
   AuthStatus, CalendarInfo, DisplayState, EventInput, EventOccurrence, FamilyMember, FamilyTable,
   ServerInfo, SyncStatus, Theme, UserSettings,
 } from './types';
@@ -75,6 +76,16 @@ export const api = {
   wake: () => request<DisplayState>('POST', '/api/display/wake'),
   syncStatus: () => request<SyncStatus>('GET', '/api/sync'),
   sync: () => request<SyncStatus>('POST', '/api/sync'),
+
+  // Konten (Google/iCloud)
+  accounts: () => request<AccountInfo[]>('GET', '/api/accounts'),
+  deleteAccount: (id: number) => request<void>('DELETE', `/api/accounts/${id}`),
+  syncAccount: (id: number) => request<SyncStatus>('POST', `/api/accounts/${id}/sync`),
+  googleConfig: () => request<GoogleConfig>('GET', '/api/accounts/google/config'),
+  setGoogleConfig: (client_id: string, client_secret: string) =>
+    request<GoogleConfig>('PUT', '/api/accounts/google/config', { client_id, client_secret }),
+  googleStart: () => request<{ auth_url: string; redirect_uri: string }>('POST', '/api/accounts/google/start'),
+  googleComplete: (url: string) => request<AccountInfo>('POST', '/api/accounts/google/complete', { url }),
 
   // Admin-PIN
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),

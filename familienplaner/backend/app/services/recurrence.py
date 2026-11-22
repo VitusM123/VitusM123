@@ -24,6 +24,26 @@ def normalize_rrule(rule: str) -> str:
     return rule
 
 
+def _align_until(rule: str, aware: bool) -> str:
+    """dateutil verlangt, dass UNTIL und DTSTART beide mit oder beide ohne Zeitzone sind.
+
+    Ganztägige Serien werden ohne Zeitzone expandiert → ``UNTIL=…Z`` bzw. ``UNTIL=YYYYMMDD`` wird
+    zu lokalem Tagesende; zeitgebundene Serien erhalten ein UTC-``UNTIL``.
+    """
+    parts = []
+    for part in rule.split(";"):
+        key, _, value = part.partition("=")
+        if key.upper() == "UNTIL" and value:
+            day = value[:8]
+            if aware and not value.endswith("Z"):
+                value = f"{day}T235959Z" if len(value) == 8 else f"{value}Z"
+            elif not aware:
+                value = f"{day}T235959"
+            part = f"UNTIL={value}"
+        parts.append(part)
+    return ";".join(parts)
+
+
 def validate_rrule(rule: str, dtstart: datetime) -> str:
     rule = normalize_rrule(rule)
     try:
@@ -83,7 +103,7 @@ def expand(
         to_utc = lambda d: d.astimezone(UTC)  # noqa: E731
 
     try:
-        rule = rrulestr(normalize_rrule(rrule), dtstart=dtstart)
+        rule = rrulestr(_align_until(normalize_rrule(rrule), aware=not all_day), dtstart=dtstart)
     except (ValueError, TypeError):
         log.warning("Ungültige RRULE %r – Serie wird nur einmal angezeigt", rrule)
         return [(start, end)] if start < window_end and end > window_start else []

@@ -11,7 +11,7 @@
 |---|-------------|---------------------|
 | F1 | Kalender mit **Monats- und Wochenansicht** | Frontend-Views `MonthView`, `WeekView` |
 | F2 | **Tabellarische Ansicht pro Familienmitglied** (Spalten = Personen, Zeilen = Tage/Zeitslots) | Frontend-View `FamilyTableView`, Termine werden über `Event.member_ids` zugeordnet |
-| F3 | Anbindung **Google Kalender** | `GoogleCalendarProvider` (Google Calendar API v3, OAuth2 Device Flow) |
+| F3 | Anbindung **Google Kalender** | `GoogleCalendarProvider` (Google Calendar API v3, OAuth2 Desktop-Client mit PKCE) |
 | F4 | Anbindung **Apple-/iCloud-Kalender** | `ICloudCalendarProvider` (CalDAV, app-spezifisches Passwort) |
 | F5 | **Wählbare Farbschemata** | Theme-System über Design-Tokens (CSS Custom Properties) + Theme-JSON |
 | F6 | **Freizeitaktivitäten im Umkreis suchen** (Tag der offenen Tür, Messen, Ausstellungen …) und in den Kalender übernehmen | `ActivityService` mit austauschbaren `ActivitySource`-Plugins, Geocoding und Umkreisfilter |
@@ -303,7 +303,7 @@ class CalendarProvider(Protocol):
 | | Google | iCloud |
 |---|---|---|
 | Protokoll | REST (Calendar API v3) | CalDAV (`https://caldav.icloud.com`) |
-| Auth | OAuth2 **Device Flow** (Code wird am Pi angezeigt und am Handy bestätigt) | Apple-ID + **app-spezifisches Passwort** |
+| Auth | OAuth2 **Desktop-Client + PKCE**, Loopback-Weiterleitung `http://127.0.0.1:8000/…` (am Pi direkt; am Handy Adresse kopieren und einfügen) | Apple-ID + **app-spezifisches Passwort** |
 | Delta-Sync | `syncToken` | CTag/ETag bzw. `sync-collection` (RFC 6578) |
 | Push | optional Webhooks (benötigt öffentliche URL → im MVP **Polling**) | Polling |
 
@@ -353,7 +353,11 @@ class EInkDriver(Protocol):
 | GET/POST/PUT/DELETE | `/api/calendars[/{id}]` | Kalender (Sichtbarkeit, Farbe, Standard, Standard-Mitglied) |
 | GET/POST/PUT/DELETE | `/api/members[/{id}]`, PUT `/api/members/order` | Familienmitglieder |
 | GET/POST | `/api/auth/status·setup·login·logout·change-pin` | Admin-PIN |
-| POST | `/api/accounts/google/device-code` | Startet den Google Device Flow |
+| GET/PUT | `/api/accounts/google/config` | Google-OAuth-Client (Client-ID/Secret, verschlüsselt gespeichert) |
+| POST | `/api/accounts/google/start` | Liefert die Google-Anmeldeadresse |
+| GET | `/api/accounts/google/callback` | Weiterleitungsziel (Anmeldung am Pi) |
+| POST | `/api/accounts/google/complete` | Anmeldung abschließen mit eingefügter Adresse (Anmeldung am Handy) |
+| POST/DELETE | `/api/accounts/{id}/sync`, `/api/accounts/{id}` | Konto synchronisieren / trennen |
 | POST | `/api/accounts/icloud` | iCloud-Konto verknüpfen |
 | POST | `/api/sync` | Sync manuell auslösen |
 | POST | `/api/activities/search` | Umkreissuche |
@@ -465,7 +469,9 @@ sequenceDiagram
 - Das Backend lauscht nur im Heimnetz (Bind an LAN-Interface, Firewall `ufw`). Erreichbar per mDNS als `familienplaner.local`.
 - **Einstellungen und Konten** sind durch eine Admin-PIN geschützt (Session-Cookie). Die Kalenderanzeige ist ohne PIN sichtbar.
 - OAuth-Tokens und das iCloud-Passwort werden mit Fernet verschlüsselt gespeichert. Der Schlüssel liegt in `/etc/familienplaner/secret.key` (Rechte 600).
-- Der Google-OAuth-Client ist ein eigener Client des Nutzers (Typ „TV & Limited Input“). Scopes: `calendar.events`, `calendar.readonly`.
+- Der Google-OAuth-Client ist ein eigener Client des Nutzers (Typ **„Desktop-App“**). Scopes: `calendar.events`,
+  `calendar.readonly`. Der ursprünglich geplante Device Flow („TV & Limited Input“) unterstützt keine
+  Kalender-Berechtigungen. Anleitung: [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
 - Backups: tägliche Kopie der SQLite-DB (`sqlite3 .backup`), optional auf einen USB-Stick oder ein NAS.
 
 ---
@@ -527,7 +533,7 @@ sequenceDiagram
 |---|---|
 | 1. Fundament + Backend-Kern | ✅ umgesetzt |
 | 2. Ansichten | ✅ umgesetzt |
-| 3. Google-Sync | offen (Sync-Rahmen vorhanden) |
+| 3. Google-Sync | ✅ umgesetzt (gegen simulierten Google-Server getestet, noch nicht gegen echtes Google) |
 | 4. iCloud-Sync | offen |
 | 5. Activities | offen (Datenmodell und Ports vorhanden) |
 | 6. Deployment | teilweise (systemd-Units, Install-Skript als Gerüst) |
@@ -547,11 +553,18 @@ Filter nach Person, Wischgesten, Einstellungen (Mitglieder, Kalender, Startansic
 Nachtmodus, automatisches Theme, Helligkeit, Admin-PIN per Ziffernblock). Kiosk-Modus (`?kiosk=1`):
 QWERTZ-Bildschirmtastatur, nach 5 min Inaktivität zurück zu „Heute“ und Verwaltung wieder sperren.
 
+**Umgesetzt in Schritt 3:** Google-Anmeldung (Desktop-Client, PKCE, Loopback oder Adresse einfügen),
+Client-Daten wahlweise in config.yaml oder verschlüsselt über die Oberfläche, Token-Erneuerung,
+Kalenderliste (inkl. schreibgeschützter Kalender), Delta-Sync mit Paging und Voll-Sync bei 410,
+Serien mit EXDATE, geänderte und abgesagte Einzelvorkommen in beide Richtungen, Personen-Zuordnung über
+`extendedProperties.private`, Konfliktregel „jüngere Änderung gewinnt“, Sync 2 s nach lokalen Änderungen.
+Behoben: ganztägige Serien mit Enddatum wurden nur einmal angezeigt.
+
 **Ausbaustufen:**
 
 1. **Fundament:** DB-Modelle, Migrationen, Settings, App-Shell, Theme-System
 2. **Ansichten mit lokalen Daten:** Monat, Woche, Familientabelle, Termin-Dialog
-3. **Google-Sync** (Device Flow, Delta-Sync, Outbox)
+3. **Google-Sync** (OAuth Desktop-Client, Delta-Sync, Outbox)
 4. **iCloud-Sync** (CalDAV)
 5. **Activities:** Geo-Service, iCal-/RSS-Quellen, Suche und Übernahme
 6. **Deployment:** Install-Skript, Kiosk, Nachtmodus

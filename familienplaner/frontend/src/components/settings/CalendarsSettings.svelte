@@ -94,7 +94,8 @@
     {/if}
   </li>
 </ul>
-<p class="note">Google- und iCloud-Kalender werden in einem späteren Schritt verknüpfbar.</p>
+<p class="note">Google-Kalender erscheinen hier nach dem Verbinden eines Kontos. Schreibgeschützte Kalender
+  (z. B. Feiertage) werden angezeigt, können aber nicht bearbeitet werden.</p>
 
 <style>
   .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
