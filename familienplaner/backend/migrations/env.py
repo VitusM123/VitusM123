@@ -21,7 +21,8 @@ def run() -> None:
 
 
 def _configure_and_run(connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
+    context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True,
+                      transactional_ddl=True)
     with context.begin_transaction():
         context.run_migrations()
 

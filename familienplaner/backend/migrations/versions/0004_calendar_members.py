@@ -2,6 +2,9 @@
 
 Revision ID: 0004
 Revises: 0003
+
+Idempotent geschrieben: repariert auch Datenbanken, in denen eine frühere Version dieser Migration
+nach dem Anlegen von ``calendarmember`` abgebrochen ist.
 """
 import sqlalchemy as sa
 from alembic import op
@@ -13,18 +16,23 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "calendarmember",
-        sa.Column("calendar_id", sa.Integer(), sa.ForeignKey("calendar.id"), primary_key=True),
-        sa.Column("member_id", sa.Integer(), sa.ForeignKey("familymember.id"), primary_key=True),
-    )
-    # Bestehende Einzelzuordnungen übernehmen
-    op.execute(
-        "INSERT INTO calendarmember (calendar_id, member_id) "
-        "SELECT id, default_member_id FROM calendar WHERE default_member_id IS NOT NULL"
-    )
-    with op.batch_alter_table("calendar") as batch_op:
-        batch_op.drop_column("default_member_id")
+    inspector = sa.inspect(op.get_bind())
+    if "calendarmember" not in inspector.get_table_names():
+        op.create_table(
+            "calendarmember",
+            sa.Column("calendar_id", sa.Integer(), sa.ForeignKey("calendar.id"), primary_key=True),
+            sa.Column("member_id", sa.Integer(), sa.ForeignKey("familymember.id"), primary_key=True),
+        )
+    columns = {c["name"] for c in inspector.get_columns("calendar")}
+    if "default_member_id" in columns:
+        # Bestehende Einzelzuordnungen übernehmen (doppelte aus einem abgebrochenen Lauf ignorieren)
+        op.execute(
+            "INSERT OR IGNORE INTO calendarmember (calendar_id, member_id) "
+            "SELECT id, default_member_id FROM calendar WHERE default_member_id IS NOT NULL "
+            "AND default_member_id IN (SELECT id FROM familymember)"
+        )
+        with op.batch_alter_table("calendar") as batch_op:
+            batch_op.drop_column("default_member_id")
 
 
 def downgrade() -> None:

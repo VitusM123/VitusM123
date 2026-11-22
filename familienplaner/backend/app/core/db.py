@@ -32,12 +32,40 @@ def create_db_engine(db_path: Path) -> Engine:
     return engine
 
 
+def _migration_engine(url) -> Engine:
+    """Eigene Engine für Migrationen:
+
+    - Fremdschlüssel-Prüfung aus: SQLite kann Spalten nur durch Neuaufbau der Tabelle ändern;
+      dabei würden Verweise (z. B. Termine → Kalender) sonst den Umbau abbrechen.
+    - Echte Transaktion (``BEGIN`` selbst senden): pysqlite führt DDL sonst ohne Transaktion aus,
+      und eine fehlgeschlagene Migration hinterließe eine halb umgebaute Datenbank.
+    """
+    engine = create_engine(url, connect_args={"check_same_thread": False, "isolation_level": None})
+
+    @sa_event.listens_for(engine, "connect")
+    def _pragmas(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys=OFF")
+
+    @sa_event.listens_for(engine, "begin")
+    def _begin(conn):
+        conn.exec_driver_sql("BEGIN")
+
+    return engine
+
+
 def run_migrations(engine: Engine) -> None:
     cfg = AlembicConfig()
     cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
-    with engine.begin() as connection:
-        cfg.attributes["connection"] = connection
-        command.upgrade(cfg, "head")
+    migration_engine = _migration_engine(engine.url)
+    try:
+        with migration_engine.begin() as connection:
+            cfg.attributes["connection"] = connection
+            command.upgrade(cfg, "head")
+            problems = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+            if problems:
+                log.warning("Datenbank enthält %d ungültige Verweise: %s", len(problems), problems[:5])
+    finally:
+        migration_engine.dispose()
 
 
 def seed_defaults(engine: Engine) -> None:
