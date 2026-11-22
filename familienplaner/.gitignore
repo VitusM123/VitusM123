@@ -7,4 +7,5 @@ frontend/dist/
 *.db
 secret.key
 config.yaml
+backend/data/
 .env

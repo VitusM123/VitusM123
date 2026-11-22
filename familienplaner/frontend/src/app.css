@@ -1,0 +1,45 @@
+/* Basis-Styles. Farben kommen ausschließlich aus Theme-Tokens (siehe lib/theme.ts). */
+:root {
+  --color-bg: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-text: #1f2933;
+  --color-text-muted: #616e7c;
+  --color-accent: #3e7cb1;
+  --color-border: #d9e2ec;
+  --color-today: #fff3c4;
+  --color-weekend: #eef2f6;
+  --font-family: Inter, system-ui, sans-serif;
+  --font-scale: 1;
+  --radius: 10px;
+  --header-h: 64px;
+  --tabbar-h: 72px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: calc(18px * var(--font-scale));
+  -webkit-font-smoothing: antialiased;
+  user-select: none;             /* Touch-Kiosk: kein versehentliches Markieren */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#app { height: 100%; }
+
+/* E-Ink: keine Animationen, harte Kanten */
+:root[data-mode='eink'] * { transition: none !important; animation: none !important; box-shadow: none !important; }

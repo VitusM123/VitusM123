@@ -1,8 +1,7 @@
 # Familienplaner – Architektur
 
-> Stand: Architektur-Entwurf (v0.1). Dieses Dokument beschreibt Aufbau, Komponenten,
-> Datenmodell, Schnittstellen und Deployment. Die Funktionen selbst sind noch **nicht**
-> implementiert. Das Code-Gerüst enthält nur Schnittstellen und Platzhalter.
+> Stand v0.1: Grundgerüst und Backend-Kern sind umgesetzt (siehe Kap. 13).
+> Dieses Dokument beschreibt Aufbau, Komponenten, Datenmodell, Schnittstellen und Deployment.
 
 ---
 
@@ -101,13 +100,18 @@ flowchart LR
 
 ```
 backend/app/
-├── main.py                 App-Factory, Router-Registrierung, Lifespan (DB, Scheduler)
-├── config.py               Settings (YAML + Umgebungsvariablen)
+├── main.py                 App-Factory, Router-Registrierung, Lifespan (Scheduler), Fehler-Mapping
+├── config.py               Settings (YAML + Umgebungsvariablen FP_*)
+├── schemas.py              API-DTOs (Request/Response)
+├── themes/                 Mitgelieferte Themes (*.json)
 ├── core/
-│   ├── db.py               Engine, Session-Handling
-│   ├── security.py         Token-Verschlüsselung (Fernet), Admin-PIN
-│   ├── scheduler.py        Job-Registrierung (Sync, Activity-Refresh, E-Ink, Nachtmodus)
-│   └── events.py           Interner Event-Bus → WebSocket-Push an das Frontend
+│   ├── db.py               Engine (SQLite/WAL), Alembic-Migrationen, Startdaten
+│   ├── deps.py             FastAPI-Dependencies, Admin-Schutz
+│   ├── security.py         Verschlüsselung (Fernet), Admin-PIN (scrypt), Sitzungs-Tokens, Login-Sperre
+│   ├── scheduler.py        Jobs: Sync, Minuten-Tick (Nachtmodus, Auto-Theme), Backup
+│   ├── events.py           Interner Event-Bus → WebSocket-Push an das Frontend
+│   ├── types.py            UTCDateTime-Spaltentyp
+│   └── timeutil.py         Zeitzonen-Helfer
 ├── domain/
 │   └── models.py           Entitäten (siehe Kap. 5)
 ├── providers/
@@ -123,7 +127,11 @@ backend/app/
 │       └── scraper.py      Adapter: konfigurierbarer HTML-Scraper (pro Website eine Regel)
 ├── services/
 │   ├── sync_service.py     Zwei-Wege-Sync lokaler Termine ↔ externe Kalender
-│   ├── calendar_service.py Abfragen für Monats-/Wochen-/Familienansicht
+│   ├── calendar_service.py Abfragen für Monats-/Wochen-/Familienansicht, Termine schreiben
+│   ├── recurrence.py       RRULE-Expansion (DST-sicher), Einzeländerungen/Ausnahmen
+│   ├── settings_service.py Einstellungen aus der Oberfläche (Standardwerte aus config.yaml)
+│   ├── display_service.py  Bildschirm an/aus, Helligkeit, Nachtmodus
+│   ├── backup_service.py   Tägliche SQLite-Sicherung mit Rotation
 │   ├── member_service.py   Familienmitglieder, Zuordnung Kalender → Person
 │   ├── activity_service.py Suche, Deduplizierung, Übernahme in den Kalender
 │   ├── geo_service.py      Geocoding, Umkreisberechnung (Haversine), Cache
@@ -133,8 +141,10 @@ backend/app/
 │   ├── members.py          /api/members
 │   ├── activities.py       /api/activities (Suche, Übernahme, Quellen)
 │   ├── accounts.py         /api/accounts (Google-/iCloud-Verknüpfung)
+│   ├── auth.py             /api/auth (Admin-PIN)
 │   ├── settings.py         /api/settings, /api/themes
-│   └── display.py          /api/display (Helligkeit, Nachtmodus, E-Ink-Trigger), /ws
+│   ├── display.py          /api/display (Bildschirm, Helligkeit)
+│   └── system.py           /api/health, /api/info, /ws
 └── display/eink/
     ├── renderer.py         Screenshot → Dithering → Treiber
     └── drivers/
@@ -150,10 +160,10 @@ frontend/src/
 ├── App.svelte              Shell: Navigation (Tab-Leiste), Uhr/Datum, Theme-Provider
 ├── lib/
 │   ├── api.ts              Typisierter REST-Client
-│   ├── ws.ts               WebSocket-Client (Live-Updates nach Sync)
+│   ├── ws.ts               WebSocket-Client (Reconnect mit Backoff, Keepalive)
 │   ├── types.ts            Gemeinsame Typen (gespiegelt aus Backend-Schemas)
-│   ├── stores.ts           Svelte-Stores: aktuelle Ansicht, Datum, Theme, Mitglieder
-│   └── theme.ts            Laden/Anwenden der Design-Tokens
+│   ├── app.svelte.ts       Globaler Zustand (Svelte-Runes) + Hash-Routing
+│   └── theme.ts            Anwenden der Design-Tokens als CSS-Variablen
 ├── views/
 │   ├── MonthView.svelte
 │   ├── WeekView.svelte
@@ -161,8 +171,7 @@ frontend/src/
 │   ├── ActivitiesView.svelte   Suche im Umkreis, Ergebnisliste, „Zum Kalender hinzufügen“
 │   ├── SettingsView.svelte     Konten, Mitglieder, Themes, Display, Activity-Quellen
 │   └── EInkView.svelte         Statische, kontrastreiche Ansicht für E-Ink-Screenshots
-├── components/             EventChip, DayCell, MemberBadge, EventDialog, ThemePicker …
-└── themes/                 *.json Theme-Definitionen
+└── components/             Header, TabBar, ScreenOff, ThemePicker (später: EventChip, DayCell, EventDialog …)
 ```
 
 **Routen**
@@ -334,19 +343,30 @@ class EInkDriver(Protocol):
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
-| GET | `/api/events?from=&to=&members=` | Termine im Zeitraum |
-| POST/PUT/DELETE | `/api/events[/{id}]` | Termin anlegen/ändern/löschen (wird zurückgespielt) |
-| GET | `/api/calendars` | Kalender inkl. Sichtbarkeit, Farbe, Standard-Mitglied |
-| GET/POST/PUT/DELETE | `/api/members` | Familienmitglieder |
+| GET | `/api/events?start=&end=&members=&calendars=` | Alle Vorkommen im Zeitraum (Serien expandiert) |
+| GET/POST | `/api/events[/{id}]` | Termin lesen/anlegen |
+| PUT/DELETE | `/api/events/{id}[?occurrence_start=]` | Ändern/Löschen – ganze Serie oder ein Vorkommen |
+| GET | `/api/family-table?start=&days=` | Tage × Familienmitglieder |
+| GET/POST/PUT/DELETE | `/api/calendars[/{id}]` | Kalender (Sichtbarkeit, Farbe, Standard, Standard-Mitglied) |
+| GET/POST/PUT/DELETE | `/api/members[/{id}]`, PUT `/api/members/order` | Familienmitglieder |
+| GET/POST | `/api/auth/status·setup·login·logout·change-pin` | Admin-PIN |
 | POST | `/api/accounts/google/device-code` | Startet den Google Device Flow |
 | POST | `/api/accounts/icloud` | iCloud-Konto verknüpfen |
 | POST | `/api/sync` | Sync manuell auslösen |
 | POST | `/api/activities/search` | Umkreissuche |
 | POST | `/api/activities/{id}/add-to-calendar` | Aktivität übernehmen |
 | GET/POST | `/api/activities/sources` | Quellen verwalten |
-| GET | `/api/themes` · PUT `/api/settings` | Themes & Einstellungen |
-| POST | `/api/display/eink/refresh` | E-Ink-Neuzeichnung |
-| WS | `/ws` | Push: `events.changed`, `sync.status`, `theme.changed` |
+| GET | `/api/themes`, `/api/themes/active` | Themes |
+| PUT | `/api/settings/theme` | Theme am Display wechseln (ohne PIN) |
+| GET/PUT | `/api/settings` | Einstellungen (Ändern mit PIN) |
+| GET/PUT | `/api/display`, POST `/api/display/wake` | Bildschirm an/aus, Helligkeit |
+| GET | `/api/health`, `/api/info` | Systeminfo |
+| POST | `/api/display/eink/refresh` | E-Ink-Neuzeichnung (Schritt 7) |
+| WS | `/ws` | Push: `events.changed`, `calendars.changed`, `members.changed`, `sync.status`, `theme.changed`, `settings.changed`, `display.changed` |
+
+**Berechtigungen:** Termine anlegen/ändern, Theme wechseln und das Display bedienen geht ohne PIN
+(Familien-Touchscreen). Mitglieder, Kalender, Konten und Einstellungen erfordern die Admin-PIN.
+Solange keine PIN gesetzt ist, ist der Admin-Bereich offen (Ersteinrichtung).
 
 ---
 
@@ -411,7 +431,9 @@ sequenceDiagram
 
 ## 8. Theme-System
 
-- Jedes Theme ist eine JSON-Datei mit **Design-Tokens**:
+- Jedes Theme ist eine JSON-Datei mit **Design-Tokens**. Mitgelieferte Themes liegen in `backend/app/themes/`.
+  Eigene Themes können als JSON in `<datenverzeichnis>/themes/` abgelegt werden (gleiche `id` überschreibt).
+  Pflicht-Tokens: `bg`, `surface`, `text`, `text-muted`, `accent`, `border`, `today`, `weekend`.
 
 ```json
 {
@@ -496,7 +518,26 @@ sequenceDiagram
 
 ---
 
-## 13. Umsetzungsplan (nächste Schritte)
+## 13. Umsetzungsplan
+
+| Schritt | Status |
+|---|---|
+| 1. Fundament + Backend-Kern | ✅ umgesetzt |
+| 2. Ansichten | offen |
+| 3. Google-Sync | offen (Sync-Rahmen vorhanden) |
+| 4. iCloud-Sync | offen |
+| 5. Activities | offen (Datenmodell und Ports vorhanden) |
+| 6. Deployment | teilweise (systemd-Units, Install-Skript als Gerüst) |
+| 7. E-Ink | offen |
+
+**Umgesetzt in Schritt 1:** Konfiguration, SQLite mit Alembic-Migrationen, lokaler Standardkalender,
+Termine inkl. Serien (RRULE, DST-sicher), Einzeländerungen und Ausnahmen, Familientabelle, Mitglieder,
+Kalenderverwaltung, Admin-PIN mit Sitzungen und Login-Sperre, verschlüsselter Schlüsselspeicher,
+Event-Bus mit WebSocket, Scheduler (Nachtmodus, Auto-Theme, Backups, Sync-Rahmen), Themes (inkl. eigener),
+Display-Steuerung (Hardware-Backlight oder Software-Abdunklung). Frontend: App-Shell mit Uhr,
+Tab-Navigation, Theme-Umschaltung live per WebSocket und Bildschirm-aus-Overlay.
+
+**Ausbaustufen:**
 
 1. **Fundament:** DB-Modelle, Migrationen, Settings, App-Shell, Theme-System
 2. **Ansichten mit lokalen Daten:** Monat, Woche, Familientabelle, Termin-Dialog

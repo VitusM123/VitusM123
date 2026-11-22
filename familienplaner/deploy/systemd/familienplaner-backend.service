@@ -7,7 +7,8 @@ Wants=network-online.target
 User=familienplaner
 WorkingDirectory=/opt/familienplaner/backend
 Environment=FP_CONFIG_FILE=/etc/familienplaner/config.yaml
-ExecStart=/opt/familienplaner/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+ExecStart=/opt/familienplaner/backend/.venv/bin/uvicorn --factory app.main:app_factory --host 0.0.0.0 --port 8000
+Environment=FP_SERVER__FRONTEND_DIST=/opt/familienplaner/frontend/dist
 Restart=always
 RestartSec=5
 

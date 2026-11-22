@@ -7,9 +7,12 @@ server:
 
 database:
   path: /var/lib/familienplaner/familienplaner.db
+  backup_dir: /var/lib/familienplaner/backups
+  backup_keep: 14
 
 security:
-  secret_key_file: /etc/familienplaner/secret.key
+  secret_key_file: /etc/familienplaner/secret.key   # wird beim ersten Start erzeugt
+  session_hours: 12
   # Admin-PIN wird beim ersten Start über die Weboberfläche gesetzt
 
 locale:
@@ -20,7 +23,9 @@ locale:
 display:
   mode: lcd            # lcd | eink
   default_view: week   # month | week | family
-  theme: nordic
+  theme: nordic               # Standard; änderbar in der Oberfläche
+  # Offizielles Pi-Touch-Display: Hintergrundbeleuchtung direkt schalten
+  # backlight_path: /sys/class/backlight/10-0045
   night_mode:
     enabled: true
     off: "22:30"
