@@ -1,0 +1,27 @@
+{
+  "id": "dark",
+  "name": "Dunkel",
+  "mode": "dark",
+  "tokens": {
+    "bg": "#111318",
+    "surface": "#1C1F26",
+    "text": "#E8EAED",
+    "text-muted": "#9AA0A6",
+    "accent": "#8AB4F8",
+    "border": "#2D313A",
+    "today": "#26324A",
+    "weekend": "#171A20"
+  },
+  "memberPalette": [
+    "#E4572E",
+    "#29335C",
+    "#F3A712",
+    "#669BBC",
+    "#7FB069",
+    "#A06CD5"
+  ],
+  "font": {
+    "family": "Inter",
+    "scale": 1.0
+  }
+}

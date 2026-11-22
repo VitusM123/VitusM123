@@ -1,0 +1,27 @@
+{
+  "id": "high-contrast",
+  "name": "Hoher Kontrast",
+  "mode": "dark",
+  "tokens": {
+    "bg": "#000000",
+    "surface": "#000000",
+    "text": "#FFFFFF",
+    "text-muted": "#E0E0E0",
+    "accent": "#FFD400",
+    "border": "#FFFFFF",
+    "today": "#333300",
+    "weekend": "#111111"
+  },
+  "memberPalette": [
+    "#E4572E",
+    "#29335C",
+    "#F3A712",
+    "#669BBC",
+    "#7FB069",
+    "#A06CD5"
+  ],
+  "font": {
+    "family": "Inter",
+    "scale": 1.0
+  }
+}

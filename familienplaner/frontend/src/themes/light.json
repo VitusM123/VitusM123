@@ -1,0 +1,27 @@
+{
+  "id": "light",
+  "name": "Hell",
+  "mode": "light",
+  "tokens": {
+    "bg": "#F7F7F8",
+    "surface": "#FFFFFF",
+    "text": "#1A1A1A",
+    "text-muted": "#6B7280",
+    "accent": "#2563EB",
+    "border": "#E5E7EB",
+    "today": "#DBEAFE",
+    "weekend": "#F3F4F6"
+  },
+  "memberPalette": [
+    "#E4572E",
+    "#29335C",
+    "#F3A712",
+    "#669BBC",
+    "#7FB069",
+    "#A06CD5"
+  ],
+  "font": {
+    "family": "Inter",
+    "scale": 1.0
+  }
+}

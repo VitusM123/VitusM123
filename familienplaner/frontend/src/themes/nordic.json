@@ -1,0 +1,27 @@
+{
+  "id": "nordic",
+  "name": "Nordisch",
+  "mode": "light",
+  "tokens": {
+    "bg": "#F5F7FA",
+    "surface": "#FFFFFF",
+    "text": "#1F2933",
+    "text-muted": "#616E7C",
+    "accent": "#3E7CB1",
+    "border": "#D9E2EC",
+    "today": "#FFF3C4",
+    "weekend": "#EEF2F6"
+  },
+  "memberPalette": [
+    "#E4572E",
+    "#29335C",
+    "#F3A712",
+    "#669BBC",
+    "#7FB069",
+    "#A06CD5"
+  ],
+  "font": {
+    "family": "Inter",
+    "scale": 1.0
+  }
+}

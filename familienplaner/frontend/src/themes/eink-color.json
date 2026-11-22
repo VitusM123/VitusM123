@@ -1,0 +1,26 @@
+{
+  "id": "eink-color",
+  "name": "E-Ink 7 Farben",
+  "mode": "eink",
+  "tokens": {
+    "bg": "#FFFFFF",
+    "surface": "#FFFFFF",
+    "text": "#000000",
+    "text-muted": "#000000",
+    "accent": "#FF0000",
+    "border": "#000000",
+    "today": "#FFFF00",
+    "weekend": "#FFFFFF"
+  },
+  "memberPalette": [
+    "#FF0000",
+    "#00FF00",
+    "#0000FF",
+    "#FFFF00",
+    "#FF8000"
+  ],
+  "font": {
+    "family": "Inter",
+    "scale": 1.0
+  }
+}

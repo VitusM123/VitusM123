@@ -1,0 +1,63 @@
+# Familienplaner – Beispielkonfiguration
+# Kopieren nach /etc/familienplaner/config.yaml
+
+server:
+  host: 0.0.0.0
+  port: 8000
+
+database:
+  path: /var/lib/familienplaner/familienplaner.db
+
+security:
+  secret_key_file: /etc/familienplaner/secret.key
+  # Admin-PIN wird beim ersten Start über die Weboberfläche gesetzt
+
+locale:
+  language: de
+  timezone: Europe/Berlin
+  week_starts_on: monday
+
+display:
+  mode: lcd            # lcd | eink
+  default_view: week   # month | week | family
+  theme: nordic
+  night_mode:
+    enabled: true
+    off: "22:30"
+    on: "06:30"
+  eink:
+    driver: waveshare_13in3e   # waveshare_* | inky_impression
+    layout: week               # week | family
+    refresh_minutes: 15
+
+sync:
+  interval_minutes: 5
+  past_days: 30
+  future_days: 365
+
+google:
+  # Eigener OAuth-Client vom Typ "TV & Limited Input devices"
+  client_id: ""
+  client_secret: ""
+
+activities:
+  home:
+    address: ""        # wird geocodiert
+    lat: null
+    lon: null
+  default_radius_km: 30
+  refresh_hours: 12
+  geocoder:
+    provider: nominatim
+    user_agent: familienplaner
+  sources: []
+  # Beispiele:
+  # - type: ical
+  #   name: Museum XY
+  #   url: https://example.org/events.ics
+  # - type: rss
+  #   name: Stadt Veranstaltungen
+  #   url: https://example.org/events.rss
+  # - type: ticketmaster
+  #   name: Ticketmaster
+  #   api_key_env: TICKETMASTER_API_KEY

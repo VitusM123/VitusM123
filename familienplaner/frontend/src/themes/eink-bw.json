@@ -1,0 +1,22 @@
+{
+  "id": "eink-bw",
+  "name": "E-Ink S/W",
+  "mode": "eink",
+  "tokens": {
+    "bg": "#FFFFFF",
+    "surface": "#FFFFFF",
+    "text": "#000000",
+    "text-muted": "#000000",
+    "accent": "#000000",
+    "border": "#000000",
+    "today": "#000000",
+    "weekend": "#FFFFFF"
+  },
+  "memberPalette": [
+    "#000000"
+  ],
+  "font": {
+    "family": "Inter",
+    "scale": 1.0
+  }
+}

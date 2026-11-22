@@ -1,0 +1,27 @@
+{
+  "id": "pastel",
+  "name": "Pastell",
+  "mode": "light",
+  "tokens": {
+    "bg": "#FFF8F0",
+    "surface": "#FFFFFF",
+    "text": "#3D3B40",
+    "text-muted": "#8A8590",
+    "accent": "#F28482",
+    "border": "#F1E3D3",
+    "today": "#FDE2E4",
+    "weekend": "#F6EEE6"
+  },
+  "memberPalette": [
+    "#E4572E",
+    "#29335C",
+    "#F3A712",
+    "#669BBC",
+    "#7FB069",
+    "#A06CD5"
+  ],
+  "font": {
+    "family": "Inter",
+    "scale": 1.0
+  }
+}

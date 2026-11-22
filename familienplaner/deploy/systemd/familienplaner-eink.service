@@ -1,0 +1,15 @@
+[Unit]
+Description=Familienplaner E-Ink Renderer
+After=familienplaner-backend.service
+Requires=familienplaner-backend.service
+Conflicts=familienplaner-kiosk.service
+
+[Service]
+User=familienplaner
+SupplementaryGroups=spi gpio
+WorkingDirectory=/opt/familienplaner/backend
+ExecStart=/opt/familienplaner/backend/.venv/bin/python -m app.display.eink.renderer
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
