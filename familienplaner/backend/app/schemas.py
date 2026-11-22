@@ -187,6 +187,7 @@ class UserSettings(BaseModel):
     night_starts: str = "19:00"
     default_view: ViewName = "week"
     week_starts_on: Literal["monday", "sunday"] = "monday"
+    show_header: bool = True          # Kopfzeile mit Uhrzeit und Datum
     night_mode: NightMode = NightMode()
     home: HomeLocation = HomeLocation()
     activity_radius_km: float = Field(default=30, gt=0, le=500)
@@ -206,6 +207,7 @@ class UserSettingsUpdate(BaseModel):
     night_starts: str | None = None
     default_view: ViewName | None = None
     week_starts_on: Literal["monday", "sunday"] | None = None
+    show_header: bool | None = None
     night_mode: NightMode | None = None
     home: HomeLocation | None = None
     activity_radius_km: float | None = Field(default=None, gt=0, le=500)

@@ -30,6 +30,12 @@
       <option value="sunday">Sonntag</option>
     </select>
 
+    <span>Kopfzeile</span>
+    <label class="check">
+      <input type="checkbox" checked={s.show_header} onchange={(e) => update({ show_header: e.currentTarget.checked })} />
+      Uhrzeit und Datum oben anzeigen
+    </label>
+
     <span>Nachtmodus</span>
     <div class="inline">
       <label class="check">

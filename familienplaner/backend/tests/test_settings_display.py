@@ -26,6 +26,9 @@ def test_select_theme_and_settings(client):
     s = client.get("/api/settings").json()
     assert s["default_view"] == "family" and s["night_mode"]["enabled"] is False and s["theme"] == "dark"
     assert client.put("/api/settings", json={"day_starts": "25:00"}).status_code == 422
+    assert s["show_header"] is True
+    assert client.put("/api/settings", json={"show_header": False}).json()["show_header"] is False
+    assert client.get("/api/settings").json()["show_header"] is False
 
 
 def test_custom_theme_overrides_and_invalid_skipped(client, settings):

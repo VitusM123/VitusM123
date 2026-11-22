@@ -86,6 +86,7 @@ export interface UserSettings {
   night_starts: string;
   default_view: CalendarViewName;
   week_starts_on: 'monday' | 'sunday';
+  show_header: boolean;
   night_mode: NightMode;
   home: { address: string; lat: number | null; lon: number | null };
   activity_radius_km: number;

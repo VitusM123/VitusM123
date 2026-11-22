@@ -3,6 +3,7 @@
   import CalendarAssignDialog from './components/CalendarAssignDialog.svelte';
   import EventDialog from './components/EventDialog.svelte';
   import Header from './components/Header.svelte';
+  import StatusBadge from './components/StatusBadge.svelte';
   import OnScreenKeyboard from './components/OnScreenKeyboard.svelte';
   import ScreenOff from './components/ScreenOff.svelte';
   import TabBar from './components/TabBar.svelte';
@@ -45,8 +46,12 @@
 {#if app.view === 'eink'}
   <EInkView />
 {:else}
-  <div class="shell">
-    <Header />
+  <div class="shell" class:no-header={app.settings?.show_header === false}>
+    {#if app.settings?.show_header === false}
+      <StatusBadge />
+    {:else}
+      <Header />
+    {/if}
     <main>
       {#if app.error}
         <div class="error">{app.error}</div>
@@ -77,6 +82,7 @@
     display: grid;
     grid-template-rows: var(--header-h) minmax(0, 1fr) var(--tabbar-h);
   }
+  .shell.no-header { grid-template-rows: minmax(0, 1fr) var(--tabbar-h); }
   main {
     overflow: auto;
     padding: 12px 16px;
